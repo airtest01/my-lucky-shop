@@ -1,2 +1,16 @@
+# === Netlify Configuration File ===
+# This file completely overrides the settings in the Netlify UI.
+
 [build]
+  # Base directory: The folder where your project is located.
+  base = "my-web"
+
+  # Build command: A command to run to force function bundling.
+  command = "echo 'Building...'"
+
+  # Publish directory: The folder to deploy, relative to the base directory.
+  # "." means the base directory itself ("my-web").
+  publish = "."
+
+  # Functions directory: Where your serverless functions are.
   functions = "netlify/functions"
