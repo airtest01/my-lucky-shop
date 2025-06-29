@@ -2,40 +2,36 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const vision = require('@google-cloud/vision');
 
-// --- ส่วนการเชื่อมต่อที่แก้ไข (เวอร์ชันสุดท้ายที่ถูกต้อง) ---
+// --- ส่วนการเชื่อมต่อใหม่โดยใช้ Base64 ---
 
-// สร้าง object สำหรับยืนยันตัวตนจาก Environment Variables แต่ละตัว
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  // **แก้ไขกลับมาใช้ .replace() ที่นี่** เพื่อจัดรูปแบบ private key ให้ถูกต้อง
-  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-};
+// 1. อ่านค่า Base64 จาก Environment Variable
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-// Initialize Firebase ด้วย object ที่สร้างขึ้น
+// 2. ถอดรหัส Base64 กลับมาเป็น JSON String
+const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+
+// 3. แปลง JSON String เป็น Object
+const serviceAccount = JSON.parse(serviceAccountJson);
+
+// Initialize Firebase (ถ้ายังไม่เคยทำ)
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert({
-        projectId: serviceAccount.projectId,
-        clientEmail: serviceAccount.clientEmail,
-        privateKey: serviceAccount.privateKey
-    }),
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 
-// Initialize Vision API ด้วย object เดียวกัน
+// Initialize Vision API
 const visionClient = new vision.ImageAnnotatorClient({
-  projectId: serviceAccount.projectId,
+  projectId: serviceAccount.project_id,
   credentials: {
-    client_email: serviceAccount.clientEmail,
-    private_key: serviceAccount.privateKey,
+    client_email: serviceAccount.client_email,
+    private_key: serviceAccount.private_key,
   }
 });
 
 const db = getFirestore();
 
-// --- จบส่วนการเชื่อมต่อที่แก้ไขใหม่ ---
-
+// --- จบส่วนการเชื่อมต่อ ---
 
 // โค้ดส่วนที่เหลือของไฟล์ไม่ต้องแก้ไข
 function findAmountInText(text) {
