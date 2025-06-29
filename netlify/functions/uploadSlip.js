@@ -1,96 +1,133 @@
 const admin = require('firebase-admin');
-const { getStorage } = require('firebase-admin/storage');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore } = require('firebase-admin/firestore');
+const vision = require('@google-cloud/vision');
 
-// --- START: การตั้งค่า Firebase Admin ---
-// คุณต้องสร้าง Service Account Key ในโปรเจกต์ Firebase ของคุณ
-// แล้วนำค่าต่างๆ มาใส่ในตัวแปร Environment Variables บน Netlify
-// วิธีทำ: https://firebase.google.com/docs/admin/setup#initialize-sdk
-try {
+// --- การเชื่อมต่อ Firebase ---
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CONFIG);
   admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    }),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    credential: admin.credential.cert(serviceAccount),
   });
-} catch (error) {
-  if (!/already exists/.test(error.message)) {
-    console.error('Firebase admin initialization error', error.stack);
-  }
 }
-// --- END: การตั้งค่า Firebase Admin ---
 
+const db = getFirestore();
+const visionClient = new vision.ImageAnnotatorClient();
 
-exports.handler = async (event, context) => {
-  // ตรวจสอบว่าเป็นการร้องขอแบบ POST เท่านั้น
+// ฟังก์ชันสำหรับค้นหาจำนวนเงินจากข้อความ
+function findAmountInText(text) {
+    // Regex นี้จะพยายามหาตัวเลขที่มีทศนิยม 2 ตำแหน่ง หรือตัวเลขลอยๆ
+    const regex = /(\d{1,3}(?:,\d{3})*\.\d{2})|(\d+\.\d{2})|(\d+)/g;
+    const matches = text.match(regex);
+    if (!matches) return null;
+    
+    // แปลงตัวเลขที่เจอทั้งหมดให้เป็น Float และหาค่าที่ใกล้เคียงกับความเป็นไปได้มากที่สุด
+    const numbers = matches.map(num => parseFloat(num.replace(/,/g, '')));
+    // ในที่นี้เราจะใช้ตัวเลขตัวสุดท้ายที่เจอ ซึ่งมักจะเป็นยอดสรุป
+    return numbers.length > 0 ? numbers[numbers.length - 1] : null;
+}
+
+// --- Main Handler ---
+exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
   try {
-    const db = getFirestore();
-    const bucket = getStorage().bucket();
     const body = JSON.parse(event.body);
+    const { 
+      imageBase64, 
+      reservedNumbers, 
+      userId, 
+      customerData, 
+      totalPrice 
+    } = body;
 
-    const { imageBase64, fileName, reservedNumbers, totalPrice, customerData } = body;
+    if (!imageBase64 || !reservedNumbers || !customerData) {
+      throw new Error('ข้อมูลที่ส่งมาไม่สมบูรณ์');
+    }
 
-    // --- 1. อัปโหลดรูปสลิปไปยัง Firebase Storage ---
-    const imageBuffer = Buffer.from(imageBase64.split(';base64,').pop(), 'base64');
-    const filePath = `slips/${Date.now()}-${fileName}`;
-    const file = bucket.file(filePath);
+    const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
 
-    await file.save(imageBuffer, {
-      metadata: { contentType: 'image/png' }, // หรือ content type อื่นๆ ตามไฟล์
+    // 1. อ่านข้อความจากสลิปด้วย Vision API
+    const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
+    const detectedText = result.fullTextAnnotation?.text || '';
+
+    if (!detectedText) {
+        throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
+    }
+
+    // 2. ค้นหาและตรวจสอบยอดเงิน
+    const amountOnSlip = findAmountInText(detectedText);
+    
+    // เราจะยอมรับยอดเงินที่ตรงกันพอดีเท่านั้น
+    if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
+       throw new Error(`ยอดเงินในสลิปไม่ถูกต้อง (${amountOnSlip || 'ไม่พบ'}) ยอดที่ต้องชำระคือ ${totalPrice} บาท`);
+    }
+
+    // 3. (ผ่านการตรวจสอบ) สร้าง Batch Write เพื่อบันทึกข้อมูล
+    const batch = db.batch();
+    const updateTimestamp = new Date();
+
+    reservedNumbers.forEach(number => {
+      const numberRef = db.collection('numbers').doc(number);
+      batch.set(numberRef, {
+        status: 'needs_review',
+        userId: userId,
+        customerName: customerData.name,
+        customerPhone: customerData.phone,
+        totalPrice: totalPrice,
+        paidAt: updateTimestamp
+      }, { merge: true });
     });
-    const publicUrl = await file.getSignedUrl({
-        action: 'read',
-        expires: '03-09-2491' // ตั้งวันหมดอายุในอนาคตไกลๆ
-    }).then(urls => urls[0]);
+    
+    await batch.commit();
 
+    // 4. (ผ่านการบันทึก) ส่ง LINE แจ้งเตือน
+    try {
+        const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
 
-    // --- 2. อัปเดตข้อมูลใน Firestore ---
-    // ใช้ Transaction เพื่อให้แน่ใจว่าการอัปเดตข้อมูลทั้งหมดสำเร็จหรือไม่ก็ล้มเหลวทั้งหมด
-    await db.runTransaction(async (transaction) => {
-      const numberRefs = reservedNumbers.map(num => db.collection('numbers').doc(num));
-      const numberDocs = await transaction.getAll(...numberRefs);
+        if (lineChannelAccessToken && lineAdminUserId) {
+            const messageBody = {
+                to: lineAdminUserId,
+                messages: [{
+                    type: 'text',
+                    text: `✅ มีรายการใหม่รอตรวจสอบ!\n\nเลขที่จอง: ${reservedNumbers.join(', ')}\nยอดเงิน: ${totalPrice} บาท\nลูกค้า: ${customerData.name}`
+                }]
+            };
 
-      // ตรวจสอบอีกครั้งว่าเลขยังเป็น pending อยู่หรือไม่
-      for(const doc of numberDocs) {
-        if (!doc.exists || doc.data().status !== 'pending') {
-          throw new Error(`Number ${doc.id} is not in a pending state.`);
+            await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${lineChannelAccessToken}`
+                },
+                body: JSON.stringify(messageBody)
+            });
         }
-      }
+    } catch (lineError) {
+        console.error("Failed to send LINE notification:", lineError);
+    }
 
-      // ถ้าทุกอย่างถูกต้อง ให้อัปเดตสถานะเป็น "sold"
-      for (const docRef of numberRefs) {
-        transaction.update(docRef, {
-          status: 'sold',
-          slipUrl: publicUrl,
-          totalPrice: totalPrice,
-          customerName: customerData.name, // อัปเดตชื่อจากข้อมูลที่ส่งมา
-          customerPhone: customerData.phone, // อัปเดตเบอร์โทร
-          soldAt: Timestamp.now() // บันทึกเวลาที่ขายสำเร็จ
-        });
-      }
-    });
-
-    // --- 3. ส่งคำตอบกลับไปที่หน้าบ้าน ---
+    // 5. ส่งคำตอบว่าสำเร็จกลับไปหน้าเว็บ
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        message: 'Payment confirmed and data updated successfully!',
-        status: 'sold' // ส่งสถานะกลับไป
-      }),
+        message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ',
+        status: 'needs_review'
+      })
     };
 
   } catch (error) {
-    console.error('Error processing payment:', error);
+    console.error('--- DETAILED ERROR in uploadSlip function: ---');
+    console.error(error);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, message: error.message }),
+      statusCode: 500, // ส่งรหัส 500 เมื่อเกิดข้อผิดพลาด
+      body: JSON.stringify({
+        success: false,
+        message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์'
+      })
     };
   }
 };
