@@ -2,40 +2,46 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const vision = require('@google-cloud/vision');
 
-// --- ส่วนการเชื่อมต่อที่แก้ไขใหม่ ---
+// --- ส่วนการเชื่อมต่อที่แก้ไขใหม่ทั้งหมด ---
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CONFIG);
-const projectId = serviceAccount.project_id;
-
-// จัดการรูปแบบของ private_key โดยการแทนที่ '\\n' ด้วย '\n'
-const credentials = {
-  client_email: serviceAccount.client_email,
-  private_key: serviceAccount.private_key.replace(/\\n/g, '\n'),
+// สร้าง object สำหรับยืนยันตัวตนจาก Environment Variables แต่ละตัว
+const serviceAccount = {
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  // ยังคงต้องจัดรูปแบบ private key แต่ดึงมาจากตัวแปรของตัวเอง
+  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
 };
 
-// Initialize Firebase (ถ้ายังไม่เคยทำ)
+// Initialize Firebase ด้วย object ที่สร้างขึ้น
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert({
+        projectId: serviceAccount.projectId,
+        clientEmail: serviceAccount.clientEmail,
+        privateKey: serviceAccount.privateKey
+    }),
   });
 }
 
-// Initialize Vision API โดยส่งค่า credential และ projectId เข้าไปโดยตรง
+// Initialize Vision API ด้วย object เดียวกัน
 const visionClient = new vision.ImageAnnotatorClient({
-  projectId,
-  credentials,
+  projectId: serviceAccount.projectId,
+  credentials: {
+    client_email: serviceAccount.clientEmail,
+    private_key: serviceAccount.privateKey,
+  }
 });
 
 const db = getFirestore();
 
-// --- จบส่วนการเชื่อมต่อที่แก้ไขใหม่ ---
+// --- จบส่วนการเชื่อมต่อที่แก้ไขใหม่ทั้งหมด ---
 
 
-// โค้ดส่วนที่เหลือของไฟล์ไม่ต้องแก้ไข
+// โค้ดส่วนที่เหลือของไฟล์ (function findAmountInText และ exports.handler) ไม่ต้องแก้ไข
 function findAmountInText(text) {
-  // ...
+    // ... โค้ดเดิม ...
 }
 
 exports.handler = async (event) => {
-  // ...
+    // ... โค้ดเดิม ...
 };
