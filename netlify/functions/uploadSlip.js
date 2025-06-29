@@ -4,12 +4,13 @@ const vision = require('@google-cloud/vision');
 
 // --- ส่วนการเชื่อมต่อที่แก้ไขใหม่ ---
 
-// อ่านค่าจาก Environment Variable
 const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CONFIG);
 const projectId = serviceAccount.project_id;
+
+// จัดการรูปแบบของ private_key โดยการแทนที่ '\\n' ด้วย '\n'
 const credentials = {
   client_email: serviceAccount.client_email,
-  private_key: serviceAccount.private_key,
+  private_key: serviceAccount.private_key.replace(/\\n/g, '\n'),
 };
 
 // Initialize Firebase (ถ้ายังไม่เคยทำ)
@@ -30,12 +31,11 @@ const db = getFirestore();
 // --- จบส่วนการเชื่อมต่อที่แก้ไขใหม่ ---
 
 
-// ฟังก์ชันสำหรับค้นหาจำนวนเงินจากข้อความ (โค้ดส่วนนี้เหมือนเดิม)
+// โค้ดส่วนที่เหลือของไฟล์ไม่ต้องแก้ไข
 function findAmountInText(text) {
-    // ... โค้ดส่วนนี้ไม่ต้องแก้ไข ...
+  // ...
 }
 
-// Main Handler (โค้ดส่วนนี้เหมือนเดิม)
 exports.handler = async (event) => {
-    // ... โค้ดส่วนนี้ไม่ต้องแก้ไข ...
+  // ...
 };
