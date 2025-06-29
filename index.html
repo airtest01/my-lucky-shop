@@ -65,15 +65,32 @@
         const loader = document.getElementById('loader'),numberGrid = document.getElementById('number-grid'),priceDisplay = document.getElementById('price-display'),headerText = document.getElementById('header-text'),remarkText = document.getElementById('remark-text'),infoModal = document.getElementById('info-modal'),infoForm = document.getElementById('info-form'),paymentModal = document.getElementById('payment-modal'),qrCodeImage = document.getElementById('qr-code-image'),paymentModalPrice = document.getElementById('payment-modal-price'),timerDisplay = document.getElementById('timer-display'),cancelPaymentButton = document.getElementById('cancel-payment-button'),cancelInfoButton = document.getElementById('cancel-info'),selectionSummary = document.getElementById('selection-summary'),selectedList = document.getElementById('selected-list'),totalPriceEl = document.getElementById('total-price'),confirmSelectionButton = document.getElementById('confirm-selection-button'),slipUploadInput = document.getElementById('slip-upload'),confirmPaymentButton = document.getElementById('confirm-payment-button'),summaryModal = document.getElementById('summary-modal'),summaryDetails = document.getElementById('summary-details'),receiptImageContainer = document.getElementById('receipt-image-container'),receiptImage = document.getElementById('receipt-image'),saveSummaryButton = document.getElementById('save-summary-button'),closeSummaryButton = document.getElementById('close-summary-button'),finalCloseButton = document.getElementById('final-close-button'),shopClosedOverlay = document.getElementById('shop-closed-overlay'),closedMessage = document.getElementById('closed-message');
         
         async function cleanupStaleReservations() {
-            const q = query(collection(db, "numbers"), where("status", "==", "pending"), where("reservedAt", "<", new Date(Date.now() - 120 * 1000)));
-            try {
-                const staleDocs = await getDocs(q);
-                if (staleDocs.empty) return;
-                const batch = writeBatch(db);
-                staleDocs.forEach(doc => { batch.delete(doc.ref); });
-                await batch.commit();
-            } catch (error) { console.error("Error during cleanup:", error); }
+    const timeoutMilliseconds = 45 * 1000; // 45 วินาที
+    const thresholdDate = new Date(Date.now() - timeoutMilliseconds);
+
+    const q = query(collection(db, "numbers"), 
+        where("status", "==", "pending"), 
+        where("reservedAt", "<", thresholdDate)
+    );
+
+    try {
+        const staleDocs = await getDocs(q);
+        if (staleDocs.empty) {
+            return; // ไม่มีการจองค้างที่หมดอายุ
         }
+
+        const batch = writeBatch(db);
+        staleDocs.forEach(doc => {
+            batch.delete(doc.ref); // เพิ่มคำสั่งลบลงใน batch
+        });
+
+        await batch.commit(); // สั่งลบข้อมูลทั้งหมดในครั้งเดียว
+        console.log(`ระบบได้ล้างการจองที่หมดอายุจำนวน ${staleDocs.size} รายการ`);
+
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดขณะล้างการจองที่ค้าง:", error);
+    }
+}
         async function loadInitialConfig() {
             try {
                 const configRef = doc(db, "settings", "shopConfig");
