@@ -2,14 +2,14 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const vision = require('@google-cloud/vision');
 
-// --- ส่วนการเชื่อมต่อที่แก้ไขใหม่ (Simplified) ---
+// --- ส่วนการเชื่อมต่อที่แก้ไข (เวอร์ชันสุดท้ายที่ถูกต้อง) ---
 
-// สร้าง object สำหรับยืนยันตัวตนจาก Environment Variables โดยตรง
-// โดยเอา .replace ออก
+// สร้าง object สำหรับยืนยันตัวตนจาก Environment Variables แต่ละตัว
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY, 
+  // **แก้ไขกลับมาใช้ .replace() ที่นี่** เพื่อจัดรูปแบบ private key ให้ถูกต้อง
+  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
 };
 
 // Initialize Firebase ด้วย object ที่สร้างขึ้น
