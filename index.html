@@ -108,7 +108,7 @@
         closedMessage = document.getElementById('closed-message');
 
     async function cleanupStaleReservations() {
-        const q = query(collection(db, "numbers"), where("status", "==", "pending"), where("reservedAt", "<", new Date(Date.now() - 50 * 1000)));
+        const q = query(collection(db, "numbers"), where("status", "==", "pending"), where("reservedAt", "<", new Date(Date.now() - 180 * 1000)));
         try {
             const staleDocs = await getDocs(q);
             if (staleDocs.empty) return;
