@@ -84,7 +84,7 @@
         <div id="access-denied" class="hidden text-center text-red-600 font-bold p-8"><p>คุณไม่ได้รับอนุญาตให้เข้าถึงระบบหลังบ้าน!</p></div>
     </div>
 
-    <script type="module">
+<script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
