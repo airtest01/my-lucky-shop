@@ -94,7 +94,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, onAuthStateChanged, signOut, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -283,7 +283,16 @@ async function handlePrizeCheck() {
     prizeResultDisplay.classList.remove('hidden');
 }
 
-const loginFunction = () => signInWithRedirect(auth, new GoogleAuthProvider());
+const loginFunction = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        // onAuthStateChanged จะทำงานต่อจากนี้โดยอัตโนมัติ
+    } catch (error) {
+        console.error("Popup login failed:", error);
+        alert("การล็อกอินล้มเหลว: " + error.message);
+    }
+};
 const logoutFunction = () => { if(unsubscribeBookings) unsubscribeBookings(); signOut(auth); };
 
 async function checkUserStatus(user) {
@@ -337,12 +346,7 @@ bookingsTableBody.addEventListener('click', (event) => { if (event.target?.class
 
 loadingText.classList.remove('hidden');
 onAuthStateChanged(auth, checkUserStatus);
-getRedirectResult(auth).then((result) => {
-    if (result) checkUserStatus(result.user);
-}).catch((error) => {
-    console.error("Error with redirect result", error);
-    loadingText.classList.add('hidden');
-});
+
     </script>
 </body>
 </html>
