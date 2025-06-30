@@ -3,7 +3,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 const vision = require('@google-cloud/vision');
 const crypto = require('crypto'); // สำหรับการทำ Hashing สลิป
 
-// --- ส่วนที่ 1: การเชื่อมต่อและการยืนยันตัวตน (ไม่เปลี่ยนแปลง) ---
+// --- ส่วนที่ 1: การเชื่อมต่อและการยืนยันตัวตน ---
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(serviceAccountJson);
@@ -41,13 +41,9 @@ function findAmountInText(text) {
   return null;
 }
 
-// --- เพิ่มเข้ามา: ฟังก์ชันสำหรับหา Transaction ID ---
 function findTransactionId(text) {
-    // Regex นี้จะมองหาข้อความที่เป็นตัวอักษรภาษาอังกฤษตัวใหญ่และตัวเลขติดกันยาวๆ
-    // ซึ่งเป็นรูปแบบทั่วไปของ Transaction ID (เช่น 015180171105CPP08125)
     const regex = /[A-Z0-9]{15,}/g;
     const matches = text.match(regex);
-    // คืนค่ารหัสแรกที่เจอ
     return matches && matches.length > 0 ? matches[0] : null;
 }
 
@@ -68,14 +64,25 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
     
-    // ตรวจสอบสลิปซ้ำด้วย Image Hash (ยังคงเก็บไว้เป็นด่านแรก)
+    // --- ตรวจสอบสลิปซ้ำด้วย Image Hash ---
     const slipHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+    
+    // --- เพิ่มเข้ามาเพื่อ Debug ---
+    console.log("--- Checking for duplicate slip ---");
+    console.log("Calculated Slip Hash:", slipHash);
+    // ----------------------------
+
     const slipRef = db.collection('usedSlips').doc(slipHash);
     const slipDoc = await slipRef.get();
+
+    // --- เพิ่มเข้ามาเพื่อ Debug ---
+    console.log("Does slip exist in DB?", slipDoc.exists);
+    // ----------------------------
+
     if (slipDoc.exists) {
       throw new Error('สลิปนี้ถูกใช้งานไปแล้ว (ตรวจสอบจากลายนิ้วมือรูปภาพ)');
     }
-
+    
     // อ่านข้อความจากสลิป
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
@@ -86,7 +93,7 @@ exports.handler = async (event) => {
         throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
     }
     
-    // --- เพิ่มเข้ามา: ตรวจสอบ Transaction ID ซ้ำ ---
+    // ตรวจสอบ Transaction ID ซ้ำ
     const transactionId = findTransactionId(detectedText);
     if (!transactionId) {
         throw new Error('ไม่สามารถหารหัสอ้างอิง (เลขที่รายการ) ในสลิปได้');
@@ -96,9 +103,8 @@ exports.handler = async (event) => {
     if (txDoc.exists) {
         throw new Error('สลิปนี้มีรหัสอ้างอิงที่ถูกใช้งานไปแล้ว');
     }
-    // --- จบส่วนตรวจสอบ Transaction ID ---
 
-    // ตรวจสอบยอดเงิน (เหมือนเดิม)
+    // ตรวจสอบยอดเงิน
     const amountOnSlip = findAmountInText(detectedText);
     if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
        throw new Error(`ยอดเงินในสลิปไม่ถูกต้อง (${amountOnSlip || 'ไม่พบ'}) ยอดที่ต้องชำระคือ ${totalPrice} บาท`);
@@ -118,8 +124,30 @@ exports.handler = async (event) => {
     
     await batch.commit();
 
-    // ส่วนของ LINE Notification (ไม่เปลี่ยนแปลง)
-    // ...
+    // ส่วนของ LINE Notification
+    try {
+        const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
+        if (lineChannelAccessToken && lineAdminUserId) {
+            const messageBody = {
+                to: lineAdminUserId,
+                messages: [{
+                    type: 'text',
+                    text: `✅ มีรายการใหม่รอตรวจสอบ!\n\nเลขที่จอง: ${reservedNumbers.join(', ')}\nยอดเงิน: ${totalPrice} บาท\nลูกค้า: ${customerData.name}`
+                }]
+            };
+            await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${lineChannelAccessToken}`
+                },
+                body: JSON.stringify(messageBody)
+            });
+        }
+    } catch (lineError) {
+        console.error("Failed to send LINE notification:", lineError);
+    }
 
     return {
       statusCode: 200,
