@@ -153,4 +153,4 @@ exports.handler = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ' })
     };
-  }
+  };
