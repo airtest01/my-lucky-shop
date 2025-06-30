@@ -192,4 +192,3 @@ exports.handler = async (event) => {
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
     };
   }
-};
