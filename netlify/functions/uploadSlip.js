@@ -169,9 +169,9 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('--- DETAILED ERROR in uploadSlip function: ---');
     console.error(error);
+    //... (โค้ดก่อนหน้า)
     return {
       statusCode: 500,
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
-    };
-  }
-};
+
+}
