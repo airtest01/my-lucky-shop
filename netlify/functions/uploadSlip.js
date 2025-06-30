@@ -26,19 +26,47 @@ const db = getFirestore();
 
 // --- ฟังก์ชันเสริม (ไม่เปลี่ยนแปลง) ---
 function findAmountInText(text) {
-  const lines = text.split('\n');
-  const keyword = 'จํานวน';
-  const keywordIndex = lines.findIndex(line => line.includes(keyword));
-  if (keywordIndex === -1 || keywordIndex + 1 >= lines.length) {
-    return null;
-  }
-  const amountLine = lines[keywordIndex + 1];
-  const regex = /(\d{1,3}(?:,\d{3})*\.\d{2})|(\d+\.\d{2})/g;
-  const matches = amountLine.match(regex);
-  if (matches && matches.length > 0) {
-    return parseFloat(matches[0].replace(/,/g, ''));
-  }
-  return null;
+    // 1. กำหนดคำค้นหา (Keywords) ที่เป็นไปได้สำหรับ "ยอดเงิน"
+    const keywords = ['จํานวนเงิน', 'จํานวน', 'Amount'];
+    const lines = text.split('\n');
+
+    // 2. สร้าง Regular Expression เพื่อค้นหาตัวเลขในรูปแบบเงิน (เช่น 10.00 หรือ 1,000.00)
+    const amountRegex = /(\d{1,3}(?:,\d{3})*?\.\d{2})/g;
+
+    for (let i = 0; i < lines.length; i++) {
+        const currentLine = lines[i].trim();
+        const hasKeyword = keywords.some(kw => currentLine.includes(kw));
+
+        if (hasKeyword) {
+            // 3. ถ้าเจอ Keyword ให้ค้นหายอดเงินใน "บรรทัดเดียวกัน" ก่อน
+            let matches = currentLine.match(amountRegex);
+            if (matches && matches.length > 0) {
+                return parseFloat(matches[0].replace(/,/g, ''));
+            }
+
+            // 4. ถ้าไม่เจอในบรรทัดเดียวกัน ให้ลองหาใน "บรรทัดถัดไป"
+            if (i + 1 < lines.length) {
+                const nextLine = lines[i + 1].trim();
+                matches = nextLine.match(amountRegex);
+                if (matches && matches.length > 0) {
+                    return parseFloat(matches[0].replace(/,/g, ''));
+                }
+            }
+        }
+    }
+
+    // 5. ถ้าไม่เจอจาก Keyword เลย ให้ลองหาจากทั้งข้อความ (สำหรับสลิปบางรูปแบบที่ยอดเงินอยู่บนสุด)
+    const allMatches = text.match(amountRegex);
+    if (allMatches) {
+        // คืนค่าตัวเลขแรกที่เจอ ซึ่งมักจะเป็นยอดเงินหลัก
+        for (const match of allMatches) {
+             const amount = parseFloat(match.replace(/,/g, ''));
+             // สันนิษฐานว่ายอดเงินโอนจริงไม่น่าจะเป็น 0.00
+             if (amount > 0) return amount;
+        }
+    }
+
+    return null; // หากไม่พบยอดเงิน
 }
 
 function findTransactionId(text) {
