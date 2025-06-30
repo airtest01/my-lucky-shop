@@ -15,14 +15,6 @@
         .number-box.pending { background-color: #fef08a; cursor: not-allowed; opacity: 0.8; }
         .number-box.sold { background-color: #ef4444; color: white; cursor: not-allowed; opacity: 0.7; }
         .modal { display: none; align-items: center; justify-content: center; }
-        /* เพิ่มต่อท้าย CSS เดิม */
-.number-box.pending-locked {
-    background-color: #facc15; /* สีเหลือง */
-    color: #422006;
-    cursor: not-allowed;
-    opacity: 0.9;
-    border: 2px solid #a16207;
-}
     </style>
 </head>
 <body class="bg-gray-100 flex justify-center items-start min-h-screen p-2 sm:p-4">
@@ -52,428 +44,452 @@
         </div>
     </div>
     <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, onSnapshot, collection, runTransaction, writeBatch, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getStorage, ref, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, onSnapshot, collection, runTransaction, writeBatch, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage, ref, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAq8geAdou5f83klHd_hOqF8CH5eNbj4zE",
-        authDomain: "my-lucky-shop.firebaseapp.com",
-        projectId: "my-lucky-shop",
-        storageBucket: "my-lucky-shop.firebasestorage.app",
-        messagingSenderId: "370639731201",
-        appId: "1:370639731201:web:a4f8007a96fe5f7705de00"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyAq8geAdou5f83klHd_hOqF8CH5eNbj4zE",
+    authDomain: "my-lucky-shop.firebaseapp.com",
+    projectId: "my-lucky-shop",
+    storageBucket: "my-lucky-shop.firebasestorage.app",
+    messagingSenderId: "370639731201",
+    appId: "1:370639731201:web:a4f8007a96fe5f7705de00"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const storage = getStorage(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
 
-    let pricePerNumber = 0,
-        baseQRCodeURL = "",
-        userId = null,
-        reservationTimer = null;
-    let selectedNumbers = [],
-        reservedNumbers = [];
+// --- ตัวแปร ---
+let pricePerNumber = 0,
+    baseQRCodeURL = "",
+    userId = null,
+    reservationTimer = null;
+let selectedNumbers = [],
+    reservedNumbers = [];
+let sellerId = null; // เพิ่มตัวแปรสำหรับเก็บ ID ของผู้ขาย
 
-    const loader = document.getElementById('loader'),
-        numberGrid = document.getElementById('number-grid'),
-        priceDisplay = document.getElementById('price-display'),
-        headerText = document.getElementById('header-text'),
-        remarkText = document.getElementById('remark-text'),
-        infoModal = document.getElementById('info-modal'),
-        infoForm = document.getElementById('info-form'),
-        paymentModal = document.getElementById('payment-modal'),
-        qrCodeImage = document.getElementById('qr-code-image'),
-        paymentModalPrice = document.getElementById('payment-modal-price'),
-        timerDisplay = document.getElementById('timer-display'),
-        cancelPaymentButton = document.getElementById('cancel-payment-button'),
-        cancelInfoButton = document.getElementById('cancel-info'),
-        selectionSummary = document.getElementById('selection-summary'),
-        selectedList = document.getElementById('selected-list'),
-        totalPriceEl = document.getElementById('total-price'),
-        confirmSelectionButton = document.getElementById('confirm-selection-button'),
-        slipUploadInput = document.getElementById('slip-upload'),
-        confirmPaymentButton = document.getElementById('confirm-payment-button'),
-        summaryModal = document.getElementById('summary-modal'),
-        summaryDetails = document.getElementById('summary-details'),
-        receiptImageContainer = document.getElementById('receipt-image-container'),
-        receiptImage = document.getElementById('receipt-image'),
-        saveSummaryButton = document.getElementById('save-summary-button'),
-        closeSummaryButton = document.getElementById('close-summary-button'),
-        finalCloseButton = document.getElementById('final-close-button'),
-        shopClosedOverlay = document.getElementById('shop-closed-overlay'),
-        closedMessage = document.getElementById('closed-message');
+// --- DOM Elements ---
+const loader = document.getElementById('loader'),
+    numberGrid = document.getElementById('number-grid'),
+    priceDisplay = document.getElementById('price-display'),
+    headerText = document.getElementById('header-text'),
+    remarkText = document.getElementById('remark-text'),
+    infoModal = document.getElementById('info-modal'),
+    infoForm = document.getElementById('info-form'),
+    paymentModal = document.getElementById('payment-modal'),
+    qrCodeImage = document.getElementById('qr-code-image'),
+    paymentModalPrice = document.getElementById('payment-modal-price'),
+    timerDisplay = document.getElementById('timer-display'),
+    cancelPaymentButton = document.getElementById('cancel-payment-button'),
+    cancelInfoButton = document.getElementById('cancel-info'),
+    selectionSummary = document.getElementById('selection-summary'),
+    selectedList = document.getElementById('selected-list'),
+    totalPriceEl = document.getElementById('total-price'),
+    confirmSelectionButton = document.getElementById('confirm-selection-button'),
+    slipUploadInput = document.getElementById('slip-upload'),
+    confirmPaymentButton = document.getElementById('confirm-payment-button'),
+    summaryModal = document.getElementById('summary-modal'),
+    summaryDetails = document.getElementById('summary-details'),
+    receiptImageContainer = document.getElementById('receipt-image-container'),
+    receiptImage = document.getElementById('receipt-image'),
+    saveSummaryButton = document.getElementById('save-summary-button'),
+    closeSummaryButton = document.getElementById('close-summary-button'),
+    finalCloseButton = document.getElementById('final-close-button'),
+    shopClosedOverlay = document.getElementById('shop-closed-overlay'),
+    closedMessage = document.getElementById('closed-message');
 
-    async function cleanupStaleReservations() {
-        const q = query(collection(db, "numbers"), where("status", "==", "pending"), where("reservedAt", "<", new Date(Date.now() - 180 * 1000)));
-        try {
-            const staleDocs = await getDocs(q);
-            if (staleDocs.empty) return;
-            const batch = writeBatch(db);
-            staleDocs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-        } catch (error) {
-            console.error("Error during cleanup:", error);
-        }
+// --- ฟังก์ชัน ---
+
+async function cleanupStaleReservations(currentSellerId) {
+    if (!currentSellerId) return;
+    const q = query(collection(db, `sellers/${currentSellerId}/numbers`), where("status", "==", "pending"), where("reservedAt", "<", new Date(Date.now() - 180 * 1000)));
+    try {
+        const staleDocs = await getDocs(q);
+        if (staleDocs.empty) return;
+        const batch = writeBatch(db);
+        staleDocs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+    } catch (error) {
+        console.error("Error during cleanup:", error);
     }
+}
 
-    async function loadInitialConfig() {
-        try {
-            const configRef = doc(db, "settings", "shopConfig");
-            const configSnap = await getDoc(configRef);
-            if (configSnap.exists()) {
-                const config = configSnap.data();
-                pricePerNumber = config.pricePerNumber;
-                baseQRCodeURL = config.baseQRCodeURL;
-                priceDisplay.textContent = `ราคาหน่วยละ ${pricePerNumber} บาท`;
-                headerText.textContent = config.headerText || 'จองเลขนำโชค';
-                headerText.style.color = config.headerColor || '#4f46e5';
-                remarkText.textContent = config.remarkText || '';
-                if (config.closingTime) {
-                    const closingTime = config.closingTime.toDate();
-                    if (new Date() >= closingTime) {
-                        shopClosedOverlay.classList.remove('hidden');
-                        shopClosedOverlay.classList.add('flex');
-                        closedMessage.textContent = `ปิดการขายเมื่อ ${closingTime.toLocaleString('th-TH')}`;
-                        return false;
-                    }
+async function loadInitialConfig(currentSellerId) {
+    if (!currentSellerId) return false;
+    try {
+        const configRef = doc(db, `sellers/${currentSellerId}/shopConfig`, "config");
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const config = configSnap.data();
+            pricePerNumber = config.pricePerNumber || 20;
+            baseQRCodeURL = config.baseQRCodeURL || "";
+            priceDisplay.textContent = `ราคาหน่วยละ ${pricePerNumber} บาท`;
+            headerText.textContent = config.headerText || 'จองเลขนำโชค';
+            headerText.style.color = config.headerColor || '#4f46e5';
+            remarkText.textContent = config.remarkText || '';
+            if (config.closingTime && config.closingTime.toDate) {
+                const closingTime = config.closingTime.toDate();
+                if (new Date() >= closingTime) {
+                    shopClosedOverlay.classList.remove('hidden');
+                    shopClosedOverlay.classList.add('flex');
+                    closedMessage.textContent = `ปิดการขายเมื่อ ${closingTime.toLocaleString('th-TH')}`;
+                    return false;
                 }
-                return true;
-            } else {
-                loader.textContent = "ไม่พบการตั้งค่าร้านค้า";
-                return false;
             }
-        } catch (error) {
-            console.error("Error loading config:", error);
-            loader.textContent = "ไม่สามารถโหลดการตั้งค่าได้";
+            return true;
+        } else {
+            document.body.innerHTML = `<div class="text-center p-8"><h1 class="text-2xl font-bold text-red-500">ไม่พบการตั้งค่าร้านค้าสำหรับผู้ขายนี้</h1><p>กรุณาตรวจสอบลิงก์อีกครั้ง</p></div>`;
             return false;
         }
+    } catch (error) {
+        console.error("Error loading config:", error);
+        document.body.innerHTML = `<div class="text-center p-8"><h1 class="text-2xl font-bold text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า</h1></div>`;
+        return false;
     }
+}
 
-    function generateNumberGrid() {
-        numberGrid.innerHTML = '';
+function generateNumberGrid() {
+    numberGrid.innerHTML = '';
+    for (let i = 0; i < 100; i++) {
+        const numberStr = i.toString().padStart(2, '0');
+        const box = document.createElement('div');
+        box.id = `num-${numberStr}`;
+        box.dataset.number = numberStr;
+        box.className = 'number-box p-3 text-center font-bold text-lg rounded-lg shadow bg-gray-200';
+        box.textContent = numberStr;
+        box.addEventListener('click', () => handleNumberClick(numberStr));
+        numberGrid.appendChild(box);
+    }
+    numberGrid.classList.remove('hidden');
+}
+
+function listenForNumberUpdates(currentSellerId) {
+    if (!currentSellerId) return;
+    onSnapshot(collection(db, `sellers/${currentSellerId}/numbers`), (snapshot) => {
+        const unavailableNumbers = new Map();
+        snapshot.forEach(doc => {
+            unavailableNumbers.set(doc.id, doc.data().status);
+        });
         for (let i = 0; i < 100; i++) {
             const numberStr = i.toString().padStart(2, '0');
-            const box = document.createElement('div');
-            box.id = `num-${numberStr}`;
-            box.dataset.number = numberStr;
-            box.className = 'number-box p-3 text-center font-bold text-lg rounded-lg shadow bg-gray-200';
-            box.textContent = numberStr;
-            box.addEventListener('click', () => handleNumberClick(numberStr));
-            numberGrid.appendChild(box);
-        }
-        numberGrid.classList.remove('hidden');
-    }
-
-    function listenForNumberUpdates() {
-        onSnapshot(collection(db, "numbers"), (snapshot) => {
-            const unavailableNumbers = new Map();
-            snapshot.forEach(doc => {
-                unavailableNumbers.set(doc.id, doc.data().status);
-            });
-            for (let i = 0; i < 100; i++) {
-                const numberStr = i.toString().padStart(2, '0');
-                const box = document.getElementById(`num-${numberStr}`);
-                if (!box) continue;
-                const status = unavailableNumbers.get(numberStr);
-                box.className = 'number-box p-3 text-center font-bold text-lg rounded-lg shadow transition';
-                if (status === 'pending') {
-                    box.classList.add('pending-locked');
-                } else if (status === 'sold' || status === 'needs_review') {
-                    box.classList.add('sold');
-                } else {
-                    box.classList.add('available', 'cursor-pointer', 'bg-gray-200');
-                    if (selectedNumbers.includes(numberStr)) {
-                        box.classList.add('selected');
-                    }
+            const box = document.getElementById(`num-${numberStr}`);
+            if (!box) continue;
+            const status = unavailableNumbers.get(numberStr);
+            box.className = 'number-box p-3 text-center font-bold text-lg rounded-lg shadow transition';
+            if (status === 'pending') {
+                box.classList.add('pending'); // You might want a different color for pending
+            } else if (status === 'sold' || status === 'needs_review') {
+                box.classList.add('sold');
+            } else {
+                box.classList.add('available', 'cursor-pointer', 'bg-gray-200');
+                if (selectedNumbers.includes(numberStr)) {
+                    box.classList.add('selected');
                 }
+            }
+        }
+    });
+}
+
+function handleNumberClick(numberStr) {
+    const box = document.getElementById(`num-${numberStr}`);
+    if (!box || !box.classList.contains('available')) {
+        return;
+    }
+    const index = selectedNumbers.indexOf(numberStr);
+    if (index > -1) {
+        selectedNumbers.splice(index, 1);
+        box.classList.remove('selected');
+    } else {
+        selectedNumbers.push(numberStr);
+        box.classList.add('selected');
+    }
+    updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+    if (selectedNumbers.length > 0) {
+        selectionSummary.classList.remove('hidden');
+        selectedNumbers.sort();
+        selectedList.textContent = selectedNumbers.join(', ');
+        totalPriceEl.textContent = `${selectedNumbers.length * pricePerNumber} บาท`;
+    } else {
+        selectionSummary.classList.add('hidden');
+    }
+}
+
+async function makeTemporaryReservation(customerName, customerPhone) {
+    if (!sellerId) {
+        alert("เกิดข้อผิดพลาด: ไม่พบข้อมูลผู้ขาย");
+        return;
+    }
+    confirmSelectionButton.disabled = true;
+    confirmSelectionButton.textContent = "กำลังจอง...";
+    try {
+        await runTransaction(db, async (transaction) => {
+            const docRefs = selectedNumbers.map(num => doc(db, `sellers/${sellerId}/numbers`, num));
+            const docsSnap = await Promise.all(docRefs.map(ref => transaction.get(ref)));
+
+            for (const docSnap of docsSnap) {
+                if (docSnap.exists()) {
+                    throw new Error(`ขออภัย, เลข ${docSnap.id} ถูกจองไปแล้ว`);
+                }
+            }
+
+            for (const num of selectedNumbers) {
+                const docRef = doc(db, `sellers/${sellerId}/numbers`, num);
+                transaction.set(docRef, {
+                    status: "pending",
+                    customerName,
+                    customerPhone,
+                    reservedBy: userId,
+                    reservedAt: new Date()
+                });
             }
         });
-    }
-
-    function handleNumberClick(numberStr) {
-        const box = document.getElementById(`num-${numberStr}`);
-        if (!box || !box.classList.contains('available')) {
-            return;
-        }
-        const index = selectedNumbers.indexOf(numberStr);
-        if (index > -1) {
-            selectedNumbers.splice(index, 1);
-            box.classList.remove('selected');
+        reservedNumbers = [...selectedNumbers];
+        showPaymentModal(reservedNumbers.length * pricePerNumber);
+    } catch (error) {
+        console.error("Transaction failed: ", error);
+        const failedNumberMatch = error.message.match(/เลข (\d+)/);
+        if (failedNumberMatch && failedNumberMatch[1]) {
+            const failedNumber = failedNumberMatch[1];
+            alert(`ขออภัย, เลข ${failedNumber} เพิ่งถูกจองไปครับ\nระบบได้นำเลขนี้ออกจากรายการที่คุณเลือกแล้ว กรุณาตรวจสอบและดำเนินการต่อ`);
+            selectedNumbers = selectedNumbers.filter(num => num !== failedNumber);
+            const box = document.getElementById(`num-${failedNumber}`);
+            if (box) box.classList.remove('selected');
+            updateSelectionSummary();
         } else {
-            selectedNumbers.push(numberStr);
-            box.classList.add('selected');
+            alert(error.message);
         }
-        updateSelectionSummary();
+    } finally {
+        confirmSelectionButton.disabled = false;
+        confirmSelectionButton.textContent = "ยืนยันการซื้อ";
     }
+}
 
-    function updateSelectionSummary() {
-        if (selectedNumbers.length > 0) {
-            selectionSummary.classList.remove('hidden');
-            selectedNumbers.sort();
-            selectedList.textContent = selectedNumbers.join(', ');
-            totalPriceEl.textContent = `${selectedNumbers.length * pricePerNumber} บาท`;
-        } else {
-            selectionSummary.classList.add('hidden');
-        }
-    }
+function showPaymentModal(totalPrice) {
+    infoModal.classList.add('hidden');
+    infoModal.classList.remove('flex');
+    qrCodeImage.src = `${baseQRCodeURL}/${totalPrice}`;
+    paymentModalPrice.textContent = totalPrice;
+    paymentModal.classList.remove('hidden');
+    paymentModal.classList.add('flex');
+    startPaymentTimer();
+}
 
-    async function makeTemporaryReservation(customerName, customerPhone) {
-        confirmSelectionButton.disabled = true;
-        confirmSelectionButton.textContent = "กำลังจอง...";
-        try {
-            await runTransaction(db, async (transaction) => {
-                const docRefs = selectedNumbers.map(num => doc(db, "numbers", num));
-                const docsSnap = await Promise.all(docRefs.map(ref => transaction.get(ref)));
-                for (const docSnap of docsSnap) {
-                    if (docSnap.exists()) {
-                        throw new Error(`ขออภัย, เลข ${docSnap.id} ถูกจองไปแล้ว`);
-                    }
-                }
-                for (const num of selectedNumbers) {
-                    const docRef = doc(db, "numbers", num);
-                    transaction.set(docRef, {
-                        status: "pending",
-                        customerName,
-                        customerPhone,
-                        reservedBy: userId,
-                        reservedAt: new Date()
-                    });
-                }
-            });
-            reservedNumbers = [...selectedNumbers];
-            showPaymentModal(reservedNumbers.length * pricePerNumber);
-        } catch (error) {
-            console.error("Transaction failed: ", error);
-            const failedNumberMatch = error.message.match(/เลข (\d+)/);
-            if (failedNumberMatch && failedNumberMatch[1]) {
-                const failedNumber = failedNumberMatch[1];
-                alert(`ขออภัย, เลข ${failedNumber} เพิ่งถูกจองไปครับ\nระบบได้นำเลขนี้ออกจากรายการที่คุณเลือกแล้ว กรุณาตรวจสอบและดำเนินการต่อ`);
-                selectedNumbers = selectedNumbers.filter(num => num !== failedNumber);
-                const box = document.getElementById(`num-${failedNumber}`);
-                if (box) box.classList.remove('selected');
-                updateSelectionSummary();
-            } else {
-                alert(error.message);
-            }
-        } finally {
-            confirmSelectionButton.disabled = false;
-            confirmSelectionButton.textContent = "ยืนยันการซื้อ";
-        }
-    }
-
-    function showPaymentModal(totalPrice) {
-        infoModal.classList.add('hidden');
-        infoModal.classList.remove('flex');
-        qrCodeImage.src = `${baseQRCodeURL}/${totalPrice}`;
-        paymentModalPrice.textContent = totalPrice;
-        paymentModal.classList.remove('hidden');
-        paymentModal.classList.add('flex');
-        startPaymentTimer();
-    }
-
-    function startPaymentTimer() {
-        let timeLeft = 180;
+function startPaymentTimer() {
+    let timeLeft = 180; // 3 minutes
+    timerDisplay.textContent = timeLeft;
+    reservationTimer = setInterval(() => {
+        timeLeft--;
         timerDisplay.textContent = timeLeft;
-        reservationTimer = setInterval(() => {
-            timeLeft--;
-            timerDisplay.textContent = timeLeft;
-            if (timeLeft <= 0) {
-                cancelReservation(true);
-            }
-        }, 1000);
-    }
+        if (timeLeft <= 0) {
+            clearInterval(reservationTimer);
+            cancelReservation(true);
+        }
+    }, 1000);
+}
 
-    async function cancelReservation(isTimeout = false) {
-        clearInterval(reservationTimer);
-        if (isTimeout) {
-            alert("หมดเวลาในการชำระเงิน ระบบได้ยกเลิกการจองของคุณแล้ว");
+async function cancelReservation(isTimeout = false) {
+    clearInterval(reservationTimer);
+    if (isTimeout) {
+        alert("หมดเวลาในการชำระเงิน ระบบได้ยกเลิกการจองของคุณแล้ว");
+    }
+    if (reservedNumbers.length > 0 && sellerId) {
+        const batch = writeBatch(db);
+        reservedNumbers.forEach(num => {
+            batch.delete(doc(db, `sellers/${sellerId}/numbers`, num));
+        });
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error cancelling reservation:", error);
         }
-        if (reservedNumbers.length > 0) {
-            const batch = writeBatch(db);
-            reservedNumbers.forEach(num => {
-                batch.delete(doc(db, "numbers", num));
+    }
+    paymentModal.classList.add('hidden');
+    paymentModal.classList.remove('flex');
+    infoModal.classList.add('hidden');
+    infoModal.classList.remove('flex');
+    reservedNumbers = [];
+    selectedNumbers = [];
+    updateSelectionSummary();
+}
+
+async function handlePaymentConfirmation() {
+    if (reservedNumbers.length === 0 || !sellerId) return;
+    const slipFile = slipUploadInput.files[0];
+    if (!slipFile) {
+        alert("กรุณาเลือกไฟล์สลิปการโอนเงิน");
+        return;
+    }
+    clearInterval(reservationTimer);
+    confirmPaymentButton.disabled = true;
+    confirmPaymentButton.textContent = 'กำลังตรวจสอบ...';
+    try {
+        const imageBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(slipFile);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+
+        const payload = {
+            imageBase64,
+            fileName: slipFile.name,
+            reservedNumbers,
+            userId,
+            totalPrice: reservedNumbers.length * pricePerNumber,
+            customerData: {
+                name: document.getElementById('customer-name').value,
+                phone: document.getElementById('customer-phone').value
+            },
+            sellerId: sellerId // Pass sellerId to the backend function
+        };
+
+        const response = await fetch('/.netlify/functions/uploadSlip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || 'เกิดข้อผิดพลาดในการอัปโหลด');
+        }
+
+        const batch = writeBatch(db);
+        reservedNumbers.forEach(num => {
+            const docRef = doc(db, `sellers/${sellerId}/numbers`, num);
+            batch.update(docRef, {
+                status: "needs_review",
+                slipFilename: slipFile.name,
             });
-            try {
-                await batch.commit();
-            } catch (error) {
-                console.error("Error cancelling reservation:", error);
-            }
-        }
+        });
+        await batch.commit();
+
+        document.getElementById('summary-number').textContent = reservedNumbers.join(', ');
+        document.getElementById('summary-name').textContent = payload.customerData.name;
+        document.getElementById('summary-phone').textContent = payload.customerData.phone;
+        document.getElementById('summary-timestamp').textContent = new Date().toLocaleString('th-TH');
+        document.getElementById('summary-slip').src = imageBase64;
+        
+        const summaryTitle = document.getElementById('summary-title'),
+            summaryExtraInfo = document.getElementById('summary-extra-info');
+        summaryTitle.textContent = "อัปโหลดสลิปสำเร็จ";
+        summaryExtraInfo.textContent = "กรุณารอผู้ดูแลระบบตรวจสอบและยืนยันการจองสักครู่ครับ";
         paymentModal.classList.add('hidden');
         paymentModal.classList.remove('flex');
-        infoModal.classList.add('hidden');
-        infoModal.classList.remove('flex');
-        reservedNumbers = [];
-        selectedNumbers = [];
-        updateSelectionSummary();
+        summaryModal.classList.remove('hidden');
+        summaryModal.classList.add('flex');
+    } catch (error) {
+        console.error("Payment confirmation error:", error);
+        alert("เกิดข้อผิดพลาด: " + error.message);
+        startPaymentTimer(); // Restart timer if payment fails
+    } finally {
+        confirmPaymentButton.disabled = false;
+        confirmPaymentButton.textContent = 'ยืนยันการชำระเงิน';
+    }
+}
+
+function resetAfterPurchase() {
+    clearInterval(reservationTimer);
+    summaryModal.classList.add('hidden');
+    summaryModal.classList.remove('flex');
+    infoForm.reset();
+    slipUploadInput.value = '';
+    selectedNumbers = [];
+    reservedNumbers = [];
+    updateSelectionSummary();
+}
+
+async function main() {
+    const urlParams = new URLSearchParams(window.location.search);
+    sellerId = urlParams.get('seller');
+
+    if (!sellerId) {
+        loader.style.display = 'none';
+        document.body.innerHTML = `<div class="text-center p-8"><h1 class="text-2xl font-bold text-red-500">ไม่พบข้อมูลร้านค้า</h1><p>กรุณาตรวจสอบลิงก์ที่คุณได้รับอีกครั้ง หรือติดต่อผู้ขาย</p></div>`;
+        return;
     }
 
-    async function handlePaymentConfirmation() {
-        if (reservedNumbers.length === 0) return;
-        const slipFile = slipUploadInput.files[0];
-        if (!slipFile) {
-            alert("กรุณาเลือกไฟล์สลิปการโอนเงิน");
-            return;
-        }
-        confirmPaymentButton.disabled = true;
-        confirmPaymentButton.textContent = 'กำลังตรวจสอบ...';
-        try {
-            clearInterval(reservationTimer);
-            const imageBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(slipFile);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-            const payload = {
-                imageBase64,
-                fileName: slipFile.name,
-                reservedNumbers,
-                userId,
-                totalPrice: reservedNumbers.length * pricePerNumber,
-                customerData: {
-                    name: document.getElementById('customer-name').value,
-                    phone: document.getElementById('customer-phone').value
-                }
-            };
-            const response = await fetch('/.netlify/functions/uploadSlip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || 'เกิดข้อผิดพลาดในการอัปโหลด');
-            }
-            // Instead of creating new docs, update the existing 'pending' ones
-            const batch = writeBatch(db);
-            reservedNumbers.forEach(num => {
-                const docRef = doc(db, "numbers", num);
-                batch.update(docRef, {
-                    status: "needs_review", // Change status from pending
-                    slipFilename: slipFile.name,
-                    // The customer data is already set, but we can re-set if needed
-                });
-            });
-            await batch.commit();
-
-            // Display summary
-            document.getElementById('summary-number').textContent = reservedNumbers.join(', ');
-            document.getElementById('summary-name').textContent = payload.customerData.name;
-            document.getElementById('summary-phone').textContent = payload.customerData.phone;
-            document.getElementById('summary-timestamp').textContent = new Date().toLocaleString('th-TH');
-            document.getElementById('summary-slip').src = imageBase64;
-            const summaryTitle = document.getElementById('summary-title'),
-                summaryExtraInfo = document.getElementById('summary-extra-info');
-            summaryTitle.textContent = "อัปโหลดสลิปสำเร็จ";
-            summaryTitle.className = "text-2xl font-bold mb-4 text-center text-yellow-600";
-            summaryExtraInfo.textContent = "กรุณารอผู้ดูแลระบบตรวจสอบและยืนยันการจองสักครู่ครับ";
-            paymentModal.classList.add('hidden');
-            paymentModal.classList.remove('flex');
-            summaryModal.classList.remove('hidden');
-            summaryModal.classList.add('flex');
-        } catch (error) {
-            console.error("Payment confirmation error:", error);
-            alert("เกิดข้อผิดพลาด: " + error.message);
-            startPaymentTimer(); // Restart timer if payment fails
-        } finally {
-            confirmPaymentButton.disabled = false;
-            confirmPaymentButton.textContent = 'ยืนยันการชำระเงิน';
-        }
-    }
-
-    function resetAfterPurchase() {
-        clearInterval(reservationTimer);
-        summaryModal.classList.add('hidden');
-        summaryModal.classList.remove('flex');
-        summaryDetails.style.display = 'block';
-        receiptImageContainer.style.display = 'none';
-        infoForm.reset();
-        slipUploadInput.value = '';
-        selectedNumbers = [];
-        reservedNumbers = [];
-        updateSelectionSummary();
-    }
-
-    async function main() {
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                await cleanupStaleReservations();
-                const configLoaded = await loadInitialConfig();
-                if (!configLoaded) return;
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userId = user.uid;
+            await cleanupStaleReservations(sellerId);
+            const configLoaded = await loadInitialConfig(sellerId);
+            if (configLoaded) {
                 generateNumberGrid();
-                listenForNumberUpdates();
-                loader.style.display = 'none';
-            } else {
-                await signInAnonymously(auth);
+                listenForNumberUpdates(sellerId);
             }
-        });
-    }
-
-    confirmSelectionButton.addEventListener('click', () => {
-        if (selectedNumbers.length > 0) {
-            infoModal.classList.remove('hidden');
-            infoModal.classList.add('flex');
+            loader.style.display = 'none';
         } else {
-            alert("กรุณาเลือกตัวเลขก่อนครับ");
+            await signInAnonymously(auth);
         }
     });
+}
 
-    cancelInfoButton.addEventListener('click', () => {
-        infoModal.classList.add('hidden');
-        infoModal.classList.remove('flex');
-        // No reservation has been made yet, so we just close the modal.
+confirmSelectionButton.addEventListener('click', () => {
+    if (selectedNumbers.length > 0) {
+        infoModal.classList.remove('hidden');
+        infoModal.classList.add('flex');
+    } else {
+        alert("กรุณาเลือกตัวเลขก่อนครับ");
+    }
+});
+
+cancelInfoButton.addEventListener('click', () => {
+    infoModal.classList.add('hidden');
+    infoModal.classList.remove('flex');
+});
+
+infoForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('customer-name').value.trim();
+    const phone = document.getElementById('customer-phone').value.trim();
+    const phoneRegex = /^0\d{9}$/;
+    if (!name || !phone) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+        return;
+    }
+    if (!phoneRegex.test(phone)) {
+        alert("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลข 10 หลัก และขึ้นต้นด้วย 0)");
+        return;
+    }
+    makeTemporaryReservation(name, phone);
+});
+
+confirmPaymentButton.addEventListener('click', handlePaymentConfirmation);
+cancelPaymentButton.addEventListener('click', () => cancelReservation(false));
+
+saveSummaryButton.addEventListener('click', () => {
+    const summaryContent = document.getElementById('summary-content-to-save'),
+        buttonsToHide = saveSummaryButton.parentElement;
+    buttonsToHide.style.display = 'none';
+    html2canvas(summaryContent, {
+        scale: 2,
+        backgroundColor: null,
+        windowWidth: summaryContent.scrollWidth,
+        windowHeight: summaryContent.scrollHeight
+    }).then(canvas => {
+        receiptImage.src = canvas.toDataURL('image/png');
+        summaryDetails.style.display = 'none';
+        receiptImageContainer.style.display = 'block';
+    }).finally(() => {
+        buttonsToHide.style.display = 'flex';
     });
+});
 
-    infoForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('customer-name').value.trim();
-        const phone = document.getElementById('customer-phone').value.trim();
-        const phoneRegex = /^0\d{9}$/;
-        if (!name || !phone) {
-            alert("กรุณากรอกข้อมูลให้ครบถ้วน");
-            return;
-        }
-        if (!phoneRegex.test(phone)) {
-            alert("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลข 10 หลัก และขึ้นต้นด้วย 0)");
-            return;
-        }
-        makeTemporaryReservation(name, phone);
-    });
+closeSummaryButton.addEventListener('click', resetAfterPurchase);
+finalCloseButton.addEventListener('click', resetAfterPurchase);
 
-    confirmPaymentButton.addEventListener('click', handlePaymentConfirmation);
+main();
 
-    cancelPaymentButton.addEventListener('click', () => cancelReservation(false));
-
-    saveSummaryButton.addEventListener('click', () => {
-        const summaryContent = document.getElementById('summary-content-to-save'),
-            buttonsToHide = saveSummaryButton.parentElement;
-        buttonsToHide.style.display = 'none';
-        html2canvas(summaryContent, {
-            scale: 2,
-            backgroundColor: null,
-            windowWidth: summaryContent.scrollWidth,
-            windowHeight: summaryContent.scrollHeight
-        }).then(canvas => {
-            receiptImage.src = canvas.toDataURL('image/png');
-            summaryDetails.style.display = 'none';
-            receiptImageContainer.style.display = 'block';
-        }).finally(() => {
-            buttonsToHide.style.display = 'flex';
-        });
-    });
-
-    closeSummaryButton.addEventListener('click', resetAfterPurchase);
-    finalCloseButton.addEventListener('click', resetAfterPurchase);
-
-    main();
 </script>
 </body>
 </html>
