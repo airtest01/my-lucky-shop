@@ -3,7 +3,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 const vision = require('@google-cloud/vision');
 const crypto = require('crypto');
 
-// --- ส่วนที่ 1: การเชื่อมต่อและการยืนยันตัวตน (Authentication) ---
+// --- ส่วนการเชื่อมต่อ (ใช้ Base64) ---
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(serviceAccountJson);
@@ -24,7 +24,7 @@ const visionClient = new vision.ImageAnnotatorClient({
 
 const db = getFirestore();
 
-// --- ส่วนที่ 2: ฟังก์ชันเสริม ---
+// --- ฟังก์ชันเสริม (ไม่เปลี่ยนแปลง) ---
 function findAmountInText(text) {
   const lines = text.split('\n');
   const keyword = 'จํานวน';
@@ -48,7 +48,7 @@ function findTransactionId(text) {
     return matches && matches.length > 0 ? matches[0] : null;
 }
 
-// --- ส่วนที่ 3: โค้ดหลักของฟังก์ชัน (Main Handler) ---
+// --- โค้ดหลักของฟังก์ชัน (Main Handler) ที่แก้ไขใหม่ทั้งหมด ---
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -56,23 +56,33 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { imageBase64, reservedNumbers, userId, customerData, totalPrice } = body;
+    const { 
+        imageBase64, 
+        reservedNumbers, 
+        userId, 
+        customerData, 
+        totalPrice, 
+        sellerId // รับ sellerId ที่ส่งมาจากหน้าบ้าน
+    } = body;
 
+    // ตรวจสอบว่ามี sellerId ส่งมาด้วยหรือไม่
+    if (!sellerId) {
+        throw new Error('ไม่พบข้อมูลผู้ขาย (Seller ID)');
+    }
     if (!imageBase64 || !reservedNumbers || !customerData) {
       throw new Error('ข้อมูลที่ส่งมาไม่สมบูรณ์');
     }
 
     const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
     
-    // 1. ตรวจสอบสลิปซ้ำด้วย Image Hash
+    // 1. ตรวจสอบสลิปซ้ำด้วย Image Hash (ในคอลเลกชันย่อยของ seller)
     const slipHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
-    const slipRef = db.collection('usedSlips').doc(slipHash);
+    const slipRef = db.collection('sellers').doc(sellerId).collection('usedSlips').doc(slipHash);
     const slipDoc = await slipRef.get();
     if (slipDoc.exists) {
       throw new Error('สลิปนี้ถูกใช้งานไปแล้ว (ตรวจสอบจากลายนิ้วมือรูปภาพ)');
     }
 
-    // 2. อ่านข้อความจากสลิป
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
     
@@ -82,30 +92,34 @@ exports.handler = async (event) => {
         throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
     }
     
-    // 3. ตรวจสอบ Transaction ID ซ้ำ
+    // 2. ตรวจสอบ Transaction ID ซ้ำ (ในคอลเลกชันย่อยของ seller)
     const transactionId = findTransactionId(detectedText);
     if (!transactionId) {
         throw new Error('ไม่สามารถหารหัสอ้างอิง (เลขที่รายการ) ในสลิปได้');
     }
-    const txRef = db.collection('usedTransactionIds').doc(transactionId);
+    const txRef = db.collection('sellers').doc(sellerId).collection('usedTransactionIds').doc(transactionId);
     const txDoc = await txRef.get();
     if (txDoc.exists) {
         throw new Error('สลิปนี้มีรหัสอ้างอิงที่ถูกใช้งานไปแล้ว');
     }
 
-    // 4. ตรวจสอบยอดเงิน
+    // 3. ตรวจสอบยอดเงิน (เหมือนเดิม)
     const amountOnSlip = findAmountInText(detectedText);
     if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
        throw new Error(`ยอดเงินในสลิปไม่ถูกต้อง (${amountOnSlip || 'ไม่พบ'}) ยอดที่ต้องชำระคือ ${totalPrice} บาท`);
     }
 
-    // 5. บันทึกข้อมูลทั้งหมด
-    const batch = db.batch();
+    // 4. บันทึกข้อมูลทั้งหมด (ในคอลเลกชันย่อยของ seller)
+    const batch = writeBatch(db);
     const updateTimestamp = new Date();
 
     reservedNumbers.forEach(number => {
-      const numberRef = db.collection('numbers').doc(number);
-      batch.set(numberRef, { status: 'needs_review', userId, customerName: customerData.name, customerPhone: customerData.phone, totalPrice, paidAt: updateTimestamp }, { merge: true });
+      // อัปเดตสถานะจาก pending เป็น needs_review
+      const numberRef = db.collection('sellers').doc(sellerId).collection('numbers').doc(number);
+      batch.update(numberRef, { 
+        status: 'needs_review', 
+        paidAt: updateTimestamp 
+      });
     });
     
     // บันทึก Hash และ Transaction ID ที่ใช้แล้ว
@@ -114,12 +128,12 @@ exports.handler = async (event) => {
     
     await batch.commit();
 
-    // 6. ส่ง LINE แจ้งเตือน
+    // 5. ส่ง LINE แจ้งเตือน (เหมือนเดิม)
     try {
         const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
         if (lineChannelAccessToken && lineAdminUserId) {
-            const messageBody = {
+             const messageBody = {
                 to: lineAdminUserId,
                 messages: [{
                     type: 'text',
@@ -128,10 +142,7 @@ exports.handler = async (event) => {
             };
             await fetch('https://api.line.me/v2/bot/message/push', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${lineChannelAccessToken}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineChannelAccessToken}` },
                 body: JSON.stringify(messageBody)
             });
         }
@@ -139,7 +150,7 @@ exports.handler = async (event) => {
         console.error("Failed to send LINE notification:", lineError);
     }
 
-    // 7. ส่งคำตอบว่าสำเร็จกลับไปหน้าเว็บ
+    // 6. ส่งคำตอบว่าสำเร็จกลับไปหน้าเว็บ
     return {
       statusCode: 200,
       body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ', status: 'needs_review' })
