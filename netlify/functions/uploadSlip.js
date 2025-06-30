@@ -110,7 +110,7 @@ exports.handler = async (event) => {
     }
 
     // 4. บันทึกข้อมูลทั้งหมด (ในคอลเลกชันย่อยของ seller)
-    const batch = writeBatch(db);
+    const batch = db.batch();
     const updateTimestamp = new Date();
 
     reservedNumbers.forEach(number => {
