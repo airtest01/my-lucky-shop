@@ -190,5 +190,3 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
-    };
-  }
