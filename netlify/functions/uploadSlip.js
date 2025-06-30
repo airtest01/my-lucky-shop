@@ -34,7 +34,7 @@ const db = getFirestore();
 // --- จบส่วนการเชื่อมต่อ ---
 
 
-// --- ฟังก์ชัน findAmountInText ฉบับอัปเกรด ---
+// --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาจำนวนเงิน (เวอร์ชันอัปเกรดล่าสุด) ---
 function findAmountInText(text) {
   const lines = text.split('\n');
   // คำค้นหาหลักสำหรับยอดเงิน
@@ -94,9 +94,8 @@ exports.handler = async (event) => {
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
     
-    // --- บรรทัดสำหรับ DEBUG: แสดงข้อความที่ AI อ่านได้ใน Log ---
+    // บรรทัดสำหรับ DEBUG: แสดงข้อความที่ AI อ่านได้ใน Log
     console.log("--- OCR Detected Text ---:", detectedText);
-    // ----------------------------------------------------
 
     if (!detectedText) {
         throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
