@@ -105,15 +105,18 @@ const firebaseConfig = {
     messagingSenderId: "370639731201",
     appId: "1:370639731201:web:a4f8007a96fe5f7705de00"
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-let currentUserId = null,
-    currentFilter = "all",
-    unsubscribeBookings = null; // To stop listening to old queries
-// --- เพิ่มบรรทัดนี้เข้ามา ---
+
+let currentUserId = null;
+let currentFilter = "all";
+let unsubscribeBookings = null;
+
 // ใส่ User UID ของบัญชีที่คุณต้องการให้เป็น "ต้นแบบ"
-const TEMPLATE_SELLER_ID = "SrgFGm21I8hX4HO1BgEiNJ0oJvV2";
+const TEMPLATE_SELLER_ID = "SrgFGm21I8hX4HO1BgEiNJ0oJvV2"; // <-- ตรวจสอบว่า UID นี้ถูกต้อง
+
 // --- DOM Elements ---
 const loginButton = document.getElementById("login-button"),
     logoutButton = document.getElementById("logout-button"),
@@ -140,7 +143,7 @@ const loginButton = document.getElementById("login-button"),
     prizeResultDisplay = document.getElementById("prize-result-display"),
     filterButtons = document.querySelector(".filter-buttons");
 
-// --- ฟังก์ชันที่แก้ไขใหม่ทั้งหมด ---
+// --- ฟังก์ชันทั้งหมดที่จำเป็น ---
 
 async function loadSellerProfile(uid) {
     const sellerSnap = await getDoc(doc(db, "sellers", uid));
@@ -152,12 +155,20 @@ async function loadSellerProfile(uid) {
 async function saveSellerProfile() {
     if (!currentUserId) return;
     const name = displayNameInput.value.trim();
-    if (!name) { profileFeedback.textContent = "กรุณาใส่ชื่อที่ใช้แสดง"; profileFeedback.className = "text-red-500 font-semibold"; return; }
+    if (!name) {
+        profileFeedback.textContent = "กรุณาใส่ชื่อที่ใช้แสดง";
+        profileFeedback.className = "mb-4 font-semibold text-red-500";
+        return;
+    }
     try {
         await setDoc(doc(db, "sellers", currentUserId), { displayName: name, updatedAt: serverTimestamp() }, { merge: true });
-        profileFeedback.textContent = "บันทึกโปรไฟล์สำเร็จ!"; profileFeedback.className = "text-green-500 font-semibold";
-        setTimeout(() => profileFeedback.textContent = "", 3000);
-    } catch (error) { console.error("Error saving profile:", error); profileFeedback.textContent = "เกิดข้อผิดพลาด"; }
+        profileFeedback.textContent = "บันทึกโปรไฟล์สำเร็จ!";
+        profileFeedback.className = "mb-4 font-semibold text-green-500";
+    } catch (error) {
+        console.error("Error saving profile:", error);
+        profileFeedback.textContent = "เกิดข้อผิดพลาด";
+        profileFeedback.className = "mb-4 font-semibold text-red-500";
+    }
 }
 
 async function loadShopConfig(uid) {
@@ -165,11 +176,8 @@ async function loadShopConfig(uid) {
     if (configSnap.exists()) {
         const config = configSnap.data();
         priceInput.value = config.pricePerNumber || '';
-        
-        // ดึง URL เต็มมาแล้วตัดเฉพาะเบอร์
         const fullUrl = config.baseQRCodeURL || '';
         qrIdInput.value = fullUrl.replace('https://promptpay.io/', '');
-
         headerTextInput.value = config.headerText || '';
         headerColorInput.value = config.headerColor || '#4f46e5';
         remarkTextInput.value = config.remarkText || '';
@@ -187,52 +195,50 @@ async function loadShopConfig(uid) {
 async function saveShopConfig() {
     if (!currentUserId) return;
     
-    // อ่านค่าจาก ID ใหม่
     const qrId = qrIdInput.value.trim();
-    // ประกอบร่าง URL ให้สมบูรณ์
     const fullQrUrl = qrId ? `https://promptpay.io/${qrId}` : '';
+    const price = Number(priceInput.value);
+    const headerText = headerTextInput.value.trim();
+    const headerColor = headerColorInput.value;
+    const remarkText = remarkTextInput.value.trim();
+    const closingTimeValue = closingTimeInput.value ? new Date(closingTimeInput.value) : null;
 
-    const price = Number(priceInput.value),
-        headerText = headerTextInput.value.trim(),
-        headerColor = headerColorInput.value,
-        remarkText = remarkTextInput.value.trim(),
-        closingTimeValue = closingTimeInput.value ? new Date(closingTimeInput.value) : null;
-
-    // ใช้ fullQrUrl ในการตรวจสอบและบันทึก
     if (!price || !fullQrUrl || !headerText) {
-        settingsFeedback.textContent = "กรุณากรอกข้อมูลหลักให้ครบ";
-        settingsFeedback.className = "text-red-500";
+        settingsFeedback.textContent = "กรุณากรอกข้อมูลหลักให้ครบ (ราคา, QR, หัวข้อหลัก)";
+        settingsFeedback.className = "mb-4 font-semibold text-red-500";
         return;
     }
     try {
         await setDoc(doc(db, `sellers/${currentUserId}/shopConfig`, "config"), {
             pricePerNumber: price,
-            baseQRCodeURL: fullQrUrl, // บันทึก URL เต็ม
+            baseQRCodeURL: fullQrUrl,
             headerText: headerText,
             headerColor: headerColor,
             remarkText: remarkText,
             closingTime: closingTimeValue
         }, { merge: true });
         settingsFeedback.textContent = "บันทึกการตั้งค่าสำเร็จ!";
-        settingsFeedback.className = "text-green-500";
-        setTimeout(() => settingsFeedback.textContent = "", 3000);
+        settingsFeedback.className = "mb-4 font-semibold text-green-500";
     } catch (error) {
         console.error("Error saving config:", error);
         settingsFeedback.textContent = "เกิดข้อผิดพลาด";
+        settingsFeedback.className = "mb-4 font-semibold text-red-500";
     }
 }
 
 function listenForBookings(uid) {
-    if (unsubscribeBookings) {
-        unsubscribeBookings();
-    }
+    if (unsubscribeBookings) unsubscribeBookings();
     const q = query(collection(db, `sellers/${uid}/numbers`), orderBy("paidAt", "desc"));
     unsubscribeBookings = onSnapshot(q, (snapshot) => {
         const docs = snapshot.docs.filter(doc => currentFilter === 'all' || doc.data().status === currentFilter);
         bookingsTableBody.innerHTML = '';
-        if (docs.length === 0) { bookingsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">ไม่พบข้อมูล</td></tr>'; return; }
+        if (docs.length === 0) {
+            bookingsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">ไม่พบข้อมูล</td></tr>';
+            return;
+        }
         docs.forEach(doc => {
-            const booking = doc.data(), row = document.createElement('tr');
+            const booking = doc.data();
+            const row = document.createElement('tr');
             const timestamp = booking.paidAt?.toDate();
             const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
             let actionButton = '-';
@@ -240,7 +246,8 @@ function listenForBookings(uid) {
                 actionButton = `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button>`;
             }
             let statusClass = "text-gray-500";
-            if(booking.status === 'needs_review') statusClass = 'text-blue-500'; if(booking.status === 'sold') statusClass = 'text-green-600';
+            if (booking.status === 'needs_review') statusClass = 'text-blue-500';
+            if (booking.status === 'sold') statusClass = 'text-green-600';
             row.innerHTML = `<td class="px-6 py-4 font-bold">${doc.id}</td><td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-6 py-4">${booking.customerName || '-'}</td><td class="px-6 py-4">${booking.customerPhone || '-'}</td><td class="px-6 py-4">${formattedTime}</td><td class="px-6 py-4">${actionButton}</td>`;
             bookingsTableBody.appendChild(row);
         });
@@ -249,39 +256,58 @@ function listenForBookings(uid) {
 
 async function handleConfirmPayment(numberId) {
     if (!currentUserId) return;
-    if (!confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) return;
-    try {
-        await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
-        alert(`ยืนยันสำเร็จ!`);
-    } catch (error) { console.error("Error confirming payment:", error); alert("เกิดข้อผิดพลาด");}
+    if (confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) {
+        try {
+            await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
+            alert(`ยืนยันสำเร็จ!`);
+        } catch (error) {
+            console.error("Error confirming payment:", error);
+            alert("เกิดข้อผิดพลาด");
+        }
+    }
 }
 
 async function handleTotalReset() {
     if (!currentUserId) return;
     const confirmationText = "รีเซ็ตเดี๋ยวนี้";
-    const userInput = prompt(`ข้อมูลการจอง "ทั้งหมด" ของคุณจะถูกลบอย่างถาวร\n\nหากแน่ใจ พิมพ์คำว่า "${confirmationText}" เพื่อยืนยัน`);
-    if (userInput !== confirmationText) { alert("การรีเซ็ตถูกยกเลิก"); return; }
+    if (prompt(`ข้อมูลการจอง "ทั้งหมด" ของคุณจะถูกลบอย่างถาวร\n\nหากแน่ใจ พิมพ์คำว่า "${confirmationText}" เพื่อยืนยัน`) !== confirmationText) {
+        alert("การรีเซ็ตถูกยกเลิก");
+        return;
+    }
     try {
         const numbersCollectionRef = collection(db, `sellers/${currentUserId}/numbers`);
         const querySnapshot = await getDocs(query(numbersCollectionRef));
-        if (querySnapshot.empty) { alert("ไม่พบข้อมูลให้รีเซ็ต"); return; }
+        if (querySnapshot.empty) {
+            alert("ไม่พบข้อมูลให้รีเซ็ต");
+            return;
+        }
         const batch = writeBatch(db);
-        querySnapshot.forEach(doc => { batch.delete(doc.ref); });
+        querySnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
         await batch.commit();
         alert("รีเซ็ตระบบสำเร็จ!");
-    } catch (error) { console.error("Error resetting system:", error); alert("เกิดข้อผิดพลาดในการรีเซ็ตระบบ"); }
+    } catch (error) {
+        console.error("Error resetting system:", error);
+        alert("เกิดข้อผิดพลาดในการรีเซ็ตระบบ");
+    }
 }
 
 async function handlePrizeCheck() {
     if (!currentUserId) return;
     const number = prizeNumberInput.value.padStart(2, '0');
-    if (number.length !== 2 || isNaN(number)) { alert("กรุณาใส่เลข 2 หลัก"); return; }
+    if (number.length !== 2 || isNaN(number)) {
+        alert("กรุณาใส่เลข 2 หลัก");
+        return;
+    }
     prizeResultDisplay.classList.add('hidden');
     const docSnap = await getDoc(doc(db, `sellers/${currentUserId}/numbers`, number));
     if (docSnap.exists() && docSnap.data().status === 'sold') {
         const winner = docSnap.data();
         prizeResultDisplay.innerHTML = `<p class="font-bold text-green-600">ขอแสดงความยินดี!</p><p>ผู้โชคดีคือ:</p><p><strong>ชื่อ:</strong> ${winner.customerName}</p><p><strong>เบอร์โทร:</strong> ${winner.customerPhone}</p>`;
-    } else { prizeResultDisplay.innerHTML = `<p class="font-semibold text-gray-600">ไม่มีผู้ซื้อเลข <strong>${number}</strong></p>`; }
+    } else {
+        prizeResultDisplay.innerHTML = `<p class="font-semibold text-gray-600">ไม่มีผู้ซื้อเลข <strong>${number}</strong></p>`;
+    }
     prizeResultDisplay.classList.remove('hidden');
 }
 
@@ -289,16 +315,18 @@ const loginFunction = async () => {
     const provider = new GoogleAuthProvider();
     try {
         await signInWithPopup(auth, provider);
-        // onAuthStateChanged จะทำงานต่อจากนี้โดยอัตโนมัติ
     } catch (error) {
         console.error("Popup login failed:", error);
         alert("การล็อกอินล้มเหลว: " + error.message);
     }
 };
-const logoutFunction = () => { if(unsubscribeBookings) unsubscribeBookings(); signOut(auth); };
+
+const logoutFunction = () => {
+    if (unsubscribeBookings) unsubscribeBookings();
+    signOut(auth);
+};
 
 async function checkUserStatus(user) {
-    // ถ้าไม่มีการล็อกอิน ให้แสดงปุ่มล็อกอิน
     if (!user) {
         loadingText.classList.add('hidden');
         loginButton.style.display = 'block';
@@ -306,71 +334,50 @@ async function checkUserStatus(user) {
         userInfoDiv.classList.add("hidden");
         return;
     }
-
-    // --- 1. ตรวจสอบสิทธิ์ (Authorization) ---
-    // เช็คว่า User UID ของคนที่ล็อกอิน มีอยู่ใน Collection 'admins' หรือไม่
     const adminDocRef = doc(db, "admins", user.uid);
     const adminDocSnap = await getDoc(adminDocRef);
-
     if (!adminDocSnap.exists()) {
-        // ถ้าไม่ใช่แอดมินที่ได้รับอนุญาต ให้แสดงหน้า "Access Denied"
         loadingText.classList.add('hidden');
         adminPanelDiv.classList.add("hidden");
         userInfoDiv.classList.add("hidden");
         document.getElementById('access-denied').classList.remove('hidden');
-        // ล็อกเอาท์ผู้ใช้ที่ไม่ใช่แอดมินออกทันที
-        signOut(auth); 
+        signOut(auth);
         return;
     }
-
-    // --- ถ้าเป็นแอดมินที่ได้รับอนุญาต ให้ทำงานต่อ ---
     currentUserId = user.uid;
     userNameSpan.textContent = user.displayName || user.email;
-
     const sellerDocRef = doc(db, "sellers", user.uid);
     const sellerDocSnap = await getDoc(sellerDocRef);
-
-    // --- 2. ตรวจสอบและโคลนค่า (Cloning Logic) ---
-    // ถ้าเป็นแอดมินใหม่ที่ยังไม่มีโปรไฟล์ร้านค้า (เข้าครั้งแรก)
     if (!sellerDocSnap.exists()) {
         console.log(`แอดมินใหม่: ${user.email}, กำลังคัดลอกการตั้งค่า...`);
         try {
-            // อ่านโปรไฟล์และ Config ของบัญชีต้นแบบ
             const templateConfigRef = doc(db, `sellers/${TEMPLATE_SELLER_ID}/shopConfig`, "config");
             const templateConfigSnap = await getDoc(templateConfigRef);
-
             if (!templateConfigSnap.exists()) {
                 throw new Error("ไม่พบการตั้งค่าของบัญชีต้นแบบ");
             }
-
             const templateData = templateConfigSnap.data();
-
-            // สร้างโปรไฟล์ Seller ใหม่สำหรับแอดมินคนนี้
-            await setDoc(sellerDocRef, { 
+            await setDoc(sellerDocRef, {
                 displayName: user.displayName || 'แอดมินใหม่',
                 email: user.email,
                 createdAt: serverTimestamp()
             });
-
-            // สร้าง shopConfig โดยคัดลอกค่าจากต้นแบบ
-            // ข้อควรระวัง: เราจะไม่คัดลอก QR Code เพื่อความปลอดภัย
             await setDoc(doc(db, `sellers/${user.uid}/shopConfig`, "config"), {
                 pricePerNumber: templateData.pricePerNumber || 0,
                 headerText: templateData.headerText || '',
                 headerColor: templateData.headerColor || '#000000',
                 remarkText: templateData.remarkText || '',
-                baseQRCodeURL: '', // !!! ตั้งใจเว้นว่างไว้ให้แอดมินใหม่กรอกเอง
+                baseQRCodeURL: '',
                 closingTime: null
             });
-
         } catch (cloneError) {
             console.error("เกิดข้อผิดพลาดระหว่างการโคลนค่า:", cloneError);
             alert("เกิดข้อผิดพลาดในการตั้งค่าโปรไฟล์เริ่มต้น: " + cloneError.message);
-            return; // หยุดทำงานถ้าโคลนไม่สำเร็จ
+            loadingText.classList.add('hidden');
+signOut(auth);
+            return;
         }
     }
-
-    // --- 3. แสดงผลหน้าแอดมินตามปกติ ---
     loginButton.style.display = 'none';
     userInfoDiv.classList.remove("hidden");
     adminPanelDiv.classList.remove("hidden");
@@ -380,8 +387,29 @@ async function checkUserStatus(user) {
     await loadShopConfig(user.uid);
     listenForBookings(user.uid);
 }
-bookingsTableBody.addEventListener('click', (event) => { if (event.target?.classList.contains('confirm-btn')) { handleConfirmPayment(event.target.dataset.id); } });
 
+// --- Event Listeners ---
+loginButton.addEventListener('click', loginFunction);
+logoutButton.addEventListener('click', logoutFunction);
+saveSettingsButton.addEventListener('click', saveShopConfig);
+saveProfileButton.addEventListener('click', saveSellerProfile);
+resetSystemButton.addEventListener('click', handleTotalReset);
+checkPrizeButton.addEventListener('click', handlePrizeCheck);
+filterButtons.addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON' && currentUserId) {
+        document.querySelector('.filter-buttons button.bg-blue-500').classList.replace('bg-blue-500','bg-gray-200');
+        event.target.classList.replace('bg-gray-200', 'bg-blue-500');
+        currentFilter = event.target.dataset.filter;
+        listenForBookings(currentUserId);
+    }
+});
+bookingsTableBody.addEventListener('click', (event) => {
+    if (event.target?.classList.contains('confirm-btn')) {
+        handleConfirmPayment(event.target.dataset.id);
+    }
+});
+
+// --- Main execution ---
 loadingText.classList.remove('hidden');
 onAuthStateChanged(auth, checkUserStatus);
 
