@@ -78,8 +78,6 @@ exports.handler = async (event) => {
     const { 
         imageBase64, 
         reservedNumbers, 
-        userId, 
-        customerData, 
         totalPrice, 
         sellerId
     } = body;
@@ -87,7 +85,7 @@ exports.handler = async (event) => {
     if (!sellerId) {
         throw new Error('ไม่พบข้อมูลผู้ขาย (Seller ID)');
     }
-    if (!imageBase64 || !reservedNumbers || !customerData) {
+    if (!imageBase64 || !reservedNumbers) {
       throw new Error('ข้อมูลที่ส่งมาไม่สมบูรณ์');
     }
 
@@ -97,7 +95,7 @@ exports.handler = async (event) => {
     const slipRef = db.collection('sellers').doc(sellerId).collection('usedSlips').doc(slipHash);
     const slipDoc = await slipRef.get();
     if (slipDoc.exists) {
-      throw new Error('สลิปนี้ถูกใช้งานไปแล้ว (ตรวจสอบจากลายนิ้วมือรูปภาพ)');
+      throw new Error('สลิปนี้ถูกใช้งานไปแล้ว');
     }
 
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
@@ -106,12 +104,12 @@ exports.handler = async (event) => {
     console.log("--- OCR Detected Text ---:", detectedText);
 
     if (!detectedText) {
-        throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
+        throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้');
     }
     
     const transactionId = findTransactionId(detectedText);
     if (!transactionId) {
-        throw new Error('ไม่สามารถหารหัสอ้างอิง (เลขที่รายการ) ในสลิปได้');
+        throw new Error('ไม่สามารถหารหัสอ้างอิงในสลิปได้');
     }
     const txRef = db.collection('sellers').doc(sellerId).collection('usedTransactionIds').doc(transactionId);
     const txDoc = await txRef.get();
@@ -135,43 +133,24 @@ exports.handler = async (event) => {
       });
     });
     
-    batch.set(slipRef, { usedAt: updateTimestamp, customerName: customerData.name, transactionId: transactionId });
-    batch.set(txRef, { usedAt: updateTimestamp, customerName: customerData.name });
+    batch.set(slipRef, { usedAt: updateTimestamp, transactionId: transactionId });
+    batch.set(txRef, { usedAt: updateTimestamp });
     
     await batch.commit();
 
-    try {
-        const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-        const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
-        if (lineChannelAccessToken && lineAdminUserId) {
-             const messageBody = {
-                to: lineAdminUserId,
-                messages: [{
-                    type: 'text',
-                    text: `✅ มีรายการใหม่รอตรวจสอบ!\n\nเลขที่จอง: ${reservedNumbers.join(', ')}\nยอดเงิน: ${totalPrice} บาท\nลูกค้า: ${customerData.name}`
-                }]
-            };
-            await fetch('https://api.line.me/v2/bot/message/push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineChannelAccessToken}` },
-                body: JSON.stringify(messageBody)
-            });
-        }
-    } catch (lineError) {
-        console.error("Failed to send LINE notification:", lineError);
-    }
+    // ส่วนของการแจ้งเตือน LINE (ถ้ามี)
+    // ...
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ', status: 'needs_review' })
+      body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ' })
     };
 
   } catch (error) {
     console.error('--- DETAILED ERROR in uploadSlip function: ---');
     console.error(error);
-    //... (โค้ดก่อนหน้า)
     return {
       statusCode: 500,
-      body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
-
-}
+      body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ' })
+    };
+  }
