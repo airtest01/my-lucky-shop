@@ -95,7 +95,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAq8geAdou5f83klHd_hOqF8CH5eNbj4zE",
@@ -241,29 +241,52 @@ function listenForBookings(uid) {
             const row = document.createElement('tr');
             const timestamp = booking.paidAt?.toDate();
             const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
-            let actionButton = '-';
+            
+            // --- ส่วนที่แก้ไขเพื่อเพิ่มปุ่ม ---
+            let actionButtons = '';
             if (booking.status === 'needs_review') {
-                actionButton = `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button>`;
+                actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
             }
+            if (booking.status === 'needs_review' || booking.status === 'sold') {
+                actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
+            }
+            if(actionButtons === '') actionButtons = '-';
+            // --- จบส่วนที่แก้ไข ---
+            
             let statusClass = "text-gray-500";
             if (booking.status === 'needs_review') statusClass = 'text-blue-500';
             if (booking.status === 'sold') statusClass = 'text-green-600';
-            row.innerHTML = `<td class="px-6 py-4 font-bold">${doc.id}</td><td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-6 py-4">${booking.customerName || '-'}</td><td class="px-6 py-4">${booking.customerPhone || '-'}</td><td class="px-6 py-4">${formattedTime}</td><td class="px-6 py-4">${actionButton}</td>`;
+
+            row.innerHTML = `<td class="px-6 py-4 font-bold">${doc.id}</td><td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-6 py-4">${booking.customerName || '-'}</td><td class="px-6 py-4">${booking.customerPhone || '-'}</td><td class="px-6 py-4">${formattedTime}</td><td class="px-6 py-4">${actionButtons}</td>`;
             bookingsTableBody.appendChild(row);
         });
     });
 }
-
-async function handleConfirmPayment(numberId) {
+async function handleCancelBooking(numberId) {
     if (!currentUserId) return;
-    if (confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) {
-        try {
-            await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
-            alert(`ยืนยันสำเร็จ!`);
-        } catch (error) {
-            console.error("Error confirming payment:", error);
-            alert("เกิดข้อผิดพลาด");
-        }
+
+    // การยืนยันขั้นที่ 1
+    if (!confirm(`คุณต้องการยกเลิกการจองหมายเลข ${numberId} จริงๆ ใช่ไหม? การกระทำนี้จะทำให้หมายเลขกลับไปว่างอีกครั้ง`)) {
+        return;
+    }
+
+    // การยืนยันขั้นที่ 2 (ให้พิมพ์เพื่อยืนยัน)
+    const confirmationText = "ยกเลิกทันที";
+    const userInput = prompt(`เพื่อยืนยันการยกเลิก โปรดพิมพ์คำว่า "${confirmationText}" ลงในช่องด้านล่าง`);
+
+    if (userInput !== confirmationText) {
+        alert("การยืนยันไม่ถูกต้อง การยกเลิกถูกยกเลิก");
+        return;
+    }
+
+    try {
+        // ลบข้อมูลการจองของหมายเลขนั้นทิ้ง
+        await deleteDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId));
+        alert(`ยกเลิกหมายเลข ${numberId} สำเร็จแล้ว หมายเลขนี้กลับไปสู่สถานะว่าง`);
+        // Real-time listener จะอัปเดตตารางให้โดยอัตโนมัติ
+    } catch (error) {
+        console.error("Error cancelling booking:", error);
+        alert("เกิดข้อผิดพลาดในการยกเลิก");
     }
 }
 
@@ -406,6 +429,8 @@ filterButtons.addEventListener('click', (event) => {
 bookingsTableBody.addEventListener('click', (event) => {
     if (event.target?.classList.contains('confirm-btn')) {
         handleConfirmPayment(event.target.dataset.id);
+    } else if (event.target?.classList.contains('cancel-btn')) {
+        handleCancelBooking(event.target.dataset.id);
     }
 });
 
