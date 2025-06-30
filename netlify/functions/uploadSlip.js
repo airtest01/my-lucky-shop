@@ -70,6 +70,10 @@ exports.handler = async (event) => {
     // 1. อ่านข้อความจากสลิปด้วย Vision API
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
+    
+    // --- บรรทัดสำหรับ DEBUG: แสดงข้อความที่ AI อ่านได้ใน Log ---
+    console.log("--- OCR Detected Text ---:", detectedText);
+    // ----------------------------------------------------
 
     if (!detectedText) {
         throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
