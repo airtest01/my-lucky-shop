@@ -111,7 +111,9 @@ const db = getFirestore(app);
 let currentUserId = null,
     currentFilter = "all",
     unsubscribeBookings = null; // To stop listening to old queries
-
+// --- เพิ่มบรรทัดนี้เข้ามา ---
+// ใส่ User UID ของบัญชีที่คุณต้องการให้เป็น "ต้นแบบ"
+const TEMPLATE_SELLER_ID = "SrgFGm21I8hX4HO1BgEiNJ0oJvV2";
 // --- DOM Elements ---
 const loginButton = document.getElementById("login-button"),
     logoutButton = document.getElementById("logout-button"),
@@ -296,6 +298,7 @@ const loginFunction = async () => {
 const logoutFunction = () => { if(unsubscribeBookings) unsubscribeBookings(); signOut(auth); };
 
 async function checkUserStatus(user) {
+    // ถ้าไม่มีการล็อกอิน ให้แสดงปุ่มล็อกอิน
     if (!user) {
         loadingText.classList.add('hidden');
         loginButton.style.display = 'block';
@@ -303,23 +306,73 @@ async function checkUserStatus(user) {
         userInfoDiv.classList.add("hidden");
         return;
     }
-    
+
+    // --- 1. ตรวจสอบสิทธิ์ (Authorization) ---
+    // เช็คว่า User UID ของคนที่ล็อกอิน มีอยู่ใน Collection 'admins' หรือไม่
+    const adminDocRef = doc(db, "admins", user.uid);
+    const adminDocSnap = await getDoc(adminDocRef);
+
+    if (!adminDocSnap.exists()) {
+        // ถ้าไม่ใช่แอดมินที่ได้รับอนุญาต ให้แสดงหน้า "Access Denied"
+        loadingText.classList.add('hidden');
+        adminPanelDiv.classList.add("hidden");
+        userInfoDiv.classList.add("hidden");
+        document.getElementById('access-denied').classList.remove('hidden');
+        // ล็อกเอาท์ผู้ใช้ที่ไม่ใช่แอดมินออกทันที
+        signOut(auth); 
+        return;
+    }
+
+    // --- ถ้าเป็นแอดมินที่ได้รับอนุญาต ให้ทำงานต่อ ---
     currentUserId = user.uid;
     userNameSpan.textContent = user.displayName || user.email;
-    loginButton.style.display = 'none';
-    userInfoDiv.classList.remove("hidden");
 
     const sellerDocRef = doc(db, "sellers", user.uid);
     const sellerDocSnap = await getDoc(sellerDocRef);
 
+    // --- 2. ตรวจสอบและโคลนค่า (Cloning Logic) ---
+    // ถ้าเป็นแอดมินใหม่ที่ยังไม่มีโปรไฟล์ร้านค้า (เข้าครั้งแรก)
     if (!sellerDocSnap.exists()) {
-        await setDoc(sellerDocRef, { 
-            displayName: user.displayName || 'ผู้ใช้ใหม่',
-            email: user.email,
-            createdAt: serverTimestamp()
-        });
+        console.log(`แอดมินใหม่: ${user.email}, กำลังคัดลอกการตั้งค่า...`);
+        try {
+            // อ่านโปรไฟล์และ Config ของบัญชีต้นแบบ
+            const templateConfigRef = doc(db, `sellers/${TEMPLATE_SELLER_ID}/shopConfig`, "config");
+            const templateConfigSnap = await getDoc(templateConfigRef);
+
+            if (!templateConfigSnap.exists()) {
+                throw new Error("ไม่พบการตั้งค่าของบัญชีต้นแบบ");
+            }
+
+            const templateData = templateConfigSnap.data();
+
+            // สร้างโปรไฟล์ Seller ใหม่สำหรับแอดมินคนนี้
+            await setDoc(sellerDocRef, { 
+                displayName: user.displayName || 'แอดมินใหม่',
+                email: user.email,
+                createdAt: serverTimestamp()
+            });
+
+            // สร้าง shopConfig โดยคัดลอกค่าจากต้นแบบ
+            // ข้อควรระวัง: เราจะไม่คัดลอก QR Code เพื่อความปลอดภัย
+            await setDoc(doc(db, `sellers/${user.uid}/shopConfig`, "config"), {
+                pricePerNumber: templateData.pricePerNumber || 0,
+                headerText: templateData.headerText || '',
+                headerColor: templateData.headerColor || '#000000',
+                remarkText: templateData.remarkText || '',
+                baseQRCodeURL: '', // !!! ตั้งใจเว้นว่างไว้ให้แอดมินใหม่กรอกเอง
+                closingTime: null
+            });
+
+        } catch (cloneError) {
+            console.error("เกิดข้อผิดพลาดระหว่างการโคลนค่า:", cloneError);
+            alert("เกิดข้อผิดพลาดในการตั้งค่าโปรไฟล์เริ่มต้น: " + cloneError.message);
+            return; // หยุดทำงานถ้าโคลนไม่สำเร็จ
+        }
     }
 
+    // --- 3. แสดงผลหน้าแอดมินตามปกติ ---
+    loginButton.style.display = 'none';
+    userInfoDiv.classList.remove("hidden");
     adminPanelDiv.classList.remove("hidden");
     loadingText.classList.add('hidden');
     referralLinkDisplay.value = `${window.location.origin}/index.html?seller=${user.uid}`;
@@ -327,21 +380,6 @@ async function checkUserStatus(user) {
     await loadShopConfig(user.uid);
     listenForBookings(user.uid);
 }
-
-loginButton.addEventListener('click', loginFunction);
-logoutButton.addEventListener('click', logoutFunction);
-saveSettingsButton.addEventListener('click', saveShopConfig);
-saveProfileButton.addEventListener('click', saveSellerProfile);
-resetSystemButton.addEventListener('click', handleTotalReset);
-checkPrizeButton.addEventListener('click', handlePrizeCheck);
-filterButtons.addEventListener('click', (event) => {
-    if (event.target.tagName === 'BUTTON' && currentUserId) {
-        document.querySelector('.filter-buttons button.bg-blue-500').classList.replace('bg-blue-500','bg-gray-200');
-        event.target.classList.replace('bg-gray-200', 'bg-blue-500');
-        currentFilter = event.target.dataset.filter;
-        listenForBookings(currentUserId);
-    }
-});
 bookingsTableBody.addEventListener('click', (event) => { if (event.target?.classList.contains('confirm-btn')) { handleConfirmPayment(event.target.dataset.id); } });
 
 loadingText.classList.remove('hidden');
