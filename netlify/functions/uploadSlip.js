@@ -34,14 +34,37 @@ const db = getFirestore();
 // --- จบส่วนการเชื่อมต่อ ---
 
 
-// --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาจำนวนเงิน ---
+// --- ฟังก์ชัน findAmountInText ฉบับอัปเกรด ---
 function findAmountInText(text) {
-    const regex = /(\d{1,3}(?:,\d{3})*\.\d{2})|(\d+\.\d{2})|(\d+)/g;
-    const matches = text.match(regex);
-    if (!matches) return null;
-    
-    const numbers = matches.map(num => parseFloat(num.replace(/,/g, '')));
-    return numbers.length > 0 ? numbers[numbers.length - 1] : null;
+  const lines = text.split('\n');
+  // คำค้นหาหลักสำหรับยอดเงิน
+  const keyword = 'จํานวน';
+
+  let amountLine = '';
+
+  // วนลูปเพื่อหาบรรทัดที่มีคำว่า "จํานวน"
+  for (const line of lines) {
+    if (line.includes(keyword)) {
+      amountLine = line;
+      break;
+    }
+  }
+
+  // ถ้าไม่เจอบรรทัดที่มีคำว่า "จํานวน" ให้คืนค่า null
+  if (!amountLine) {
+    return null;
+  }
+
+  // เมื่อเจอบรรทัดแล้ว ให้ดึงตัวเลขจากบรรทัดนั้น
+  const regex = /(\d{1,3}(?:,\d{3})*\.\d{2})|(\d+\.\d{2})/g; // หาตัวเลขที่มีทศนิยม .00
+  const matches = amountLine.match(regex);
+
+  if (matches && matches.length > 0) {
+    // คืนค่าตัวเลขแรกที่เจอในบรรทัดนั้น
+    return parseFloat(matches[0].replace(/,/g, ''));
+  }
+
+  return null;
 }
 
 
