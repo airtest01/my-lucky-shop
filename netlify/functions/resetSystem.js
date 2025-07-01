@@ -3,34 +3,42 @@ const { getFirestore } = require('firebase-admin/firestore');
 const { getStorage } = require("firebase-admin/storage");
 
 // --- ส่วนการเชื่อมต่อ ---
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+if (!serviceAccountBase64) {
+    throw new Error("Firebase service account is not set in environment variables.");
+}
+const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(serviceAccountJson);
+
 if (!admin.apps.length) {
-  // ... (คัดลอกส่วนการเชื่อมต่อ admin.initializeApp ทั้งหมดจากไฟล์ uploadSlip.js มาวางที่นี่)
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: `${serviceAccount.project_id}.appspot.com`
+  });
 }
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
+// --- โค้ดหลักของฟังก์ชัน ---
 exports.handler = async (event, context) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
+  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
   try {
     const token = event.headers.authorization?.split('Bearer ')[1];
     if (!token) throw new Error('ไม่พบ Token สำหรับยืนยันตัวตน');
-
     const decodedToken = await admin.auth().verifyIdToken(token);
     const adminUid = decodedToken.uid;
+    
+    // Authorize admin
+    const adminDocSnap = await db.collection('admins').doc(adminUid).get();
+    if (!adminDocSnap.exists) throw new Error('คุณไม่ได้รับสิทธิ์ในการดำเนินการนี้');
+    
+    console.log(`Reset initiated by admin: ${adminUid}`);
 
-    const adminDocRef = db.collection('admins').doc(adminUid);
-    const adminDocSnap = await adminDocRef.get();
-    if (!adminDocSnap.exists) {
-        return { statusCode: 403, body: JSON.stringify({ success: false, message: 'คุณไม่ได้รับสิทธิ์' }) };
-    }
-
-    // ลบไฟล์ใน Storage
+    // Delete Storage files
     const prefix = `slips/${adminUid}/`;
     await bucket.deleteFiles({ prefix: prefix });
-
-    // ลบข้อมูลใน Firestore
+    
+    // Delete Firestore data
     const collectionsToDelete = ['numbers', 'usedSlips', 'usedTransactionIds'];
     for (const collectionName of collectionsToDelete) {
         const collectionRef = db.collection('sellers').doc(adminUid).collection(collectionName);
@@ -40,15 +48,10 @@ exports.handler = async (event, context) => {
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
     }
-
-    return {
-        statusCode: 200,
-        body: JSON.stringify({ success: true, message: 'รีเซ็ตระบบทั้งหมดเรียบร้อยแล้ว' })
-    };
+    
+    return { statusCode: 200, body: JSON.stringify({ success: true, message: 'รีเซ็ตระบบทั้งหมดเรียบร้อยแล้ว' }) };
   } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาด' })
-    };
+    console.error('Error in resetSystem function:', error);
+    return { statusCode: 500, body: JSON.stringify({ success: false, message: error.message }) };
   }
 };
