@@ -1,24 +1,10 @@
-// ในไฟล์ uploadSlip.js
-
-//... (โค้ดส่วนอื่น ๆ ด้านบน)
-
-exports.handler = async (event) => {
-  // ---- เพิ่มบรรทัดนี้เข้าไป ----
-  console.log("--- EXECUTING UPLOADSLIP CODE VERSION 4.0 (GLOBAL CHECK) ---"); 
-  // -------------------------
-
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
-  try {
-    //... (โค้ดที่เหลือ)
-  }
-  //...
-};
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getStorage } = require("firebase-admin/storage");
 const vision = require('@google-cloud/vision');
 const crypto = require('crypto');
 
+// --- ส่วนการเชื่อมต่อ ---
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 if (!serviceAccountBase64) {
     throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is not set.");
@@ -41,6 +27,7 @@ const visionClient = new vision.ImageAnnotatorClient({
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
+// --- ฟังก์ชันเสริม ---
 function findAmountInText(text) {
     const patterns = [
         /^([,\d]+\.\d{2})$/m,
@@ -70,32 +57,47 @@ function findTransactionId(text) {
     return null;
 }
 
+// --- โค้ดหลักของฟังก์ชัน ---
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+  // Log สำหรับการทดสอบ (วางไว้ตำแหน่งที่ถูกต้องแล้ว)
+  console.log("--- EXECUTING UPLOADSLIP CODE v5.0 (FINAL CHECK) ---");
+
+  if (event.httpMethod !== 'POST') {
+      return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
   try {
     const body = JSON.parse(event.body);
     const { imageBase64, reservedNumbers, totalPrice, sellerId, customerData } = body;
-    if (!sellerId || !imageBase64 || !reservedNumbers || !customerData) throw new Error('ข้อมูลไม่สมบูรณ์');
+    if (!sellerId || !imageBase64 || !reservedNumbers || !customerData) {
+        throw new Error('ข้อมูลที่ส่งมาไม่สมบูรณ์');
+    }
     
     const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
     const slipHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
     
-    // ---- START: ส่วนที่แก้ไข ----
-    // เปลี่ยนไปใช้ Collection กลางสำหรับเช็คสลิปซ้ำ
+    // ตรวจสอบกับทะเบียนกลาง
     const slipRef = db.collection('globalUsedSlips').doc(slipHash);
-    if ((await slipRef.get()).exists) throw new Error('สลิปนี้ถูกใช้ไปแล้วในระบบ');
+    if ((await slipRef.get()).exists) {
+        throw new Error('สลิปนี้ถูกใช้ไปแล้วในระบบ');
+    }
 
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
-    if (!detectedText) throw new Error('ไม่สามารถอ่านข้อมูลได้');
+    if (!detectedText) {
+        throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพสลิปได้');
+    }
     
     const transactionId = findTransactionId(detectedText);
-    if (!transactionId) throw new Error('ไม่พบรหัสอ้างอิง');
+    if (!transactionId) {
+        throw new Error('ไม่พบรหัสอ้างอิงในสลิป');
+    }
     
-    // เปลี่ยนไปใช้ Collection กลางสำหรับเช็ครหัสอ้างอิงซ้ำ
+    // ตรวจสอบกับทะเบียนกลาง
     const txRef = db.collection('globalUsedTransactionIds').doc(transactionId);
-    if ((await txRef.get()).exists) throw new Error('รหัสอ้างอิงนี้ถูกใช้ไปแล้วในระบบ');
-    // ---- END: ส่วนที่แก้ไข ----
+    if ((await txRef.get()).exists) {
+        throw new Error('รหัสอ้างอิงนี้ถูกใช้ไปแล้วในระบบ');
+    }
 
     const amountOnSlip = findAmountInText(detectedText);
     if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
@@ -110,6 +112,7 @@ exports.handler = async (event) => {
 
     const batch = db.batch();
     const updateTimestamp = new Date();
+    
     reservedNumbers.forEach(number => {
       const numberRef = db.collection('sellers').doc(sellerId).collection('numbers').doc(number);
       batch.set(numberRef, { 
@@ -121,17 +124,23 @@ exports.handler = async (event) => {
       });
     });
 
-    // ---- START: ส่วนที่แก้ไข ----
-    // บันทึกลงทะเบียนกลาง พร้อมระบุว่าใครเป็นคนใช้
+    // บันทึกลงทะเบียนกลาง
     batch.set(slipRef, { usedAt: updateTimestamp, transactionId: transactionId, sellerId: sellerId });
     batch.set(txRef, { usedAt: updateTimestamp, sellerId: sellerId });
-    // ---- END: ส่วนที่แก้ไข ----
 
     await batch.commit();
 
-    return { statusCode: 200, body: JSON.stringify({ success: true, message: 'อัปโหลดสำเร็จ' }) };
+    return { 
+        statusCode: 200, 
+        body: JSON.stringify({ success: true, message: 'อัปโหลดสำเร็จ' }) 
+    };
+
   } catch (error) {
+    // ส่วนของ catch ที่หายไป (ตอนนี้กลับมาแล้ว)
     console.error("Error in uploadSlip:", error);
-    return { statusCode: 500, body: JSON.stringify({ success: false, message: error.message }) };
+    return { 
+        statusCode: 500, 
+        body: JSON.stringify({ success: false, message: error.message }) 
+    };
   }
 };
