@@ -13,6 +13,8 @@ const serviceAccount = JSON.parse(serviceAccountJson);
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
+    // ใส่ชื่อที่ถูกต้องกลับเข้าไปตามนี้
+    storageBucket: 'my-lucky-shop.firebasestorage.app'
   });
 }
 const db = getFirestore();
