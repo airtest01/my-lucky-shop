@@ -1,11 +1,12 @@
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getStorage } = require("firebase-admin/storage");
+const vision = require('@google-cloud/vision');
+const crypto = require('crypto');
 
-// --- ส่วนการเชื่อมต่อ ---
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 if (!serviceAccountBase64) {
-    throw new Error("Firebase service account is not set in environment variables.");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is not set.");
 }
 const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(serviceAccountJson);
@@ -16,39 +17,69 @@ if (!admin.apps.length) {
     storageBucket: `${serviceAccount.project_id}.appspot.com`
   });
 }
+
+const visionClient = new vision.ImageAnnotatorClient({
+  projectId: serviceAccount.project_id,
+  credentials: { client_email: serviceAccount.client_email, private_key: serviceAccount.private_key }
+});
+
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
-// --- โค้ดหลักของฟังก์ชัน ---
-exports.handler = async (event, context) => {
+function findAmountInText(text) { /* ... */ }
+function findTransactionId(text) { /* ... */ }
+
+exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
   try {
-    const token = event.headers.authorization?.split('Bearer ')[1];
-    if (!token) throw new Error('ไม่พบ Token สำหรับยืนยันตัวตน');
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const adminUid = decodedToken.uid;
+    const body = JSON.parse(event.body);
+    const { imageBase64, reservedNumbers, totalPrice, sellerId, customerData } = body;
+    if (!sellerId || !imageBase64 || !reservedNumbers || !customerData) throw new Error('ข้อมูลไม่สมบูรณ์');
     
-    const adminDocSnap = await db.collection('admins').doc(adminUid).get();
-    if (!adminDocSnap.exists) throw new Error('คุณไม่ได้รับสิทธิ์ในการดำเนินการนี้');
+    const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
+    const slipHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
     
-    console.log(`Reset initiated by admin: ${adminUid}`);
+    const slipRef = db.collection('sellers').doc(sellerId).collection('usedSlips').doc(slipHash);
+    if ((await slipRef.get()).exists) throw new Error('สลิปนี้ถูกใช้แล้ว');
 
-    const prefix = `slips/${adminUid}/`;
-    await bucket.deleteFiles({ prefix: prefix });
+    const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
+    const detectedText = result.fullTextAnnotation?.text || '';
+    if (!detectedText) throw new Error('ไม่สามารถอ่านข้อมูลได้');
     
-    const collectionsToDelete = ['numbers', 'usedSlips', 'usedTransactionIds'];
-    for (const collectionName of collectionsToDelete) {
-        const collectionRef = db.collection('sellers').doc(adminUid).collection(collectionName);
-        const snapshot = await collectionRef.get();
-        if (snapshot.empty) continue;
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
+    const transactionId = findTransactionId(detectedText);
+    if (!transactionId) throw new Error('ไม่พบรหัสอ้างอิง');
+    const txRef = db.collection('sellers').doc(sellerId).collection('usedTransactionIds').doc(transactionId);
+    if ((await txRef.get()).exists) throw new Error('รหัสอ้างอิงนี้ถูกใช้แล้ว');
+
+    const amountOnSlip = findAmountInText(detectedText);
+    if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
+       throw new Error(`ยอดเงินไม่ถูกต้อง (${amountOnSlip || 'ไม่พบ'}) ยอดชำระคือ ${totalPrice} บาท`);
     }
-    
-    return { statusCode: 200, body: JSON.stringify({ success: true, message: 'รีเซ็ตระบบทั้งหมดเรียบร้อยแล้ว' }) };
+
+    const filePath = `slips/${sellerId}/${slipHash}.jpg`;
+    const file = bucket.file(filePath);
+    await file.save(imageBuffer, { metadata: { contentType: 'image/jpeg' } });
+    await file.makePublic();
+    const publicUrl = file.publicUrl();
+
+    const batch = db.batch();
+    const updateTimestamp = new Date();
+    reservedNumbers.forEach(number => {
+      const numberRef = db.collection('sellers').doc(sellerId).collection('numbers').doc(number);
+      batch.set(numberRef, { 
+        status: 'needs_review', 
+        paidAt: updateTimestamp,
+        customerName: customerData.name,
+        customerPhone: customerData.phone,
+        slipUrl: publicUrl
+      });
+    });
+    batch.set(slipRef, { usedAt: updateTimestamp, transactionId: transactionId });
+    batch.set(txRef, { usedAt: updateTimestamp });
+    await batch.commit();
+
+    return { statusCode: 200, body: JSON.stringify({ success: true, message: 'อัปโหลดสำเร็จ' }) };
   } catch (error) {
-    console.error('Error in resetSystem function:', error);
     return { statusCode: 500, body: JSON.stringify({ success: false, message: error.message }) };
   }
 };
