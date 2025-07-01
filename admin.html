@@ -242,7 +242,6 @@ function listenForBookings(uid) {
             const timestamp = booking.paidAt?.toDate();
             const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
             
-            // --- ส่วนที่แก้ไขเพื่อเพิ่มปุ่ม ---
             let actionButtons = '';
             if (booking.status === 'needs_review') {
                 actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
@@ -251,7 +250,6 @@ function listenForBookings(uid) {
                 actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
             }
             if(actionButtons === '') actionButtons = '-';
-            // --- จบส่วนที่แก้ไข ---
             
             let statusClass = "text-gray-500";
             if (booking.status === 'needs_review') statusClass = 'text-blue-500';
@@ -262,15 +260,27 @@ function listenForBookings(uid) {
         });
     });
 }
+
+async function handleConfirmPayment(numberId) {
+    if (!currentUserId) return;
+    if (confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) {
+        try {
+            await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
+            alert(`ยืนยันสำเร็จ!`);
+        } catch (error) {
+            console.error("Error confirming payment:", error);
+            alert("เกิดข้อผิดพลาดในการยืนยัน: " + error.message);
+        }
+    }
+}
+
 async function handleCancelBooking(numberId) {
     if (!currentUserId) return;
 
-    // การยืนยันขั้นที่ 1
     if (!confirm(`คุณต้องการยกเลิกการจองหมายเลข ${numberId} จริงๆ ใช่ไหม? การกระทำนี้จะทำให้หมายเลขกลับไปว่างอีกครั้ง`)) {
         return;
     }
 
-    // การยืนยันขั้นที่ 2 (ให้พิมพ์เพื่อยืนยัน)
     const confirmationText = "ยกเลิกทันที";
     const userInput = prompt(`เพื่อยืนยันการยกเลิก โปรดพิมพ์คำว่า "${confirmationText}" ลงในช่องด้านล่าง`);
 
@@ -280,16 +290,13 @@ async function handleCancelBooking(numberId) {
     }
 
     try {
-        // ลบข้อมูลการจองของหมายเลขนั้นทิ้ง
         await deleteDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId));
         alert(`ยกเลิกหมายเลข ${numberId} สำเร็จแล้ว หมายเลขนี้กลับไปสู่สถานะว่าง`);
-        // Real-time listener จะอัปเดตตารางให้โดยอัตโนมัติ
     } catch (error) {
         console.error("Error cancelling booking:", error);
-        alert("เกิดข้อผิดพลาดในการยกเลิก");
+        alert("เกิดข้อผิดพลาดในการยกเลิก: " + error.message);
     }
 }
-
 async function handleTotalReset() {
     if (!currentUserId) return;
     const confirmationText = "รีเซ็ตเดี๋ยวนี้";
@@ -315,7 +322,6 @@ async function handleTotalReset() {
         alert("เกิดข้อผิดพลาดในการรีเซ็ตระบบ");
     }
 }
-
 async function handlePrizeCheck() {
     if (!currentUserId) return;
     const number = prizeNumberInput.value.padStart(2, '0');
