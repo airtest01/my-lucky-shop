@@ -14,8 +14,7 @@ const serviceAccount = JSON.parse(serviceAccountJson);
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    storageBucket: `${serviceAccount.project_id}.appspot.com`
-  });
+      });
 }
 
 const visionClient = new vision.ImageAnnotatorClient({
