@@ -14,9 +14,10 @@ const serviceAccount = JSON.parse(serviceAccountJson);
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-      });
+    // ใส่ชื่อที่ถูกต้องกลับเข้าไปตามนี้
+    storageBucket: 'my-lucky-shop.firebasestorage.app'
+  });
 }
-
 const visionClient = new vision.ImageAnnotatorClient({
   projectId: serviceAccount.project_id,
   credentials: { client_email: serviceAccount.client_email, private_key: serviceAccount.private_key }
