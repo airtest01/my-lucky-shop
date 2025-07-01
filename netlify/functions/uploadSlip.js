@@ -1,3 +1,18 @@
+// ในไฟล์ uploadSlip.js
+
+//... (โค้ดส่วนอื่น ๆ ด้านบน)
+
+exports.handler = async (event) => {
+  // ---- เพิ่มบรรทัดนี้เข้าไป ----
+  console.log("--- EXECUTING UPLOADSLIP CODE VERSION 4.0 (GLOBAL CHECK) ---"); 
+  // -------------------------
+
+  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+  try {
+    //... (โค้ดที่เหลือ)
+  }
+  //...
+};
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getStorage } = require("firebase-admin/storage");
