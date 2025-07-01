@@ -15,7 +15,7 @@
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-gray-800">หน้าสำหรับผู้ดูแลระบบ</h1>
         </header>
-        
+
         <div id="user-info" class="hidden mb-6 bg-white p-4 rounded-lg shadow flex justify-between items-center">
             <p>สวัสดี, <span id="user-name" class="font-semibold"></span></p>
             <button id="logout-button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors">ออกจากระบบ</button>
@@ -24,7 +24,7 @@
         <p id="loading-text" class="text-center mt-4 hidden">กำลังตรวจสอบข้อมูลการล็อกอิน...</p>
 
         <div id="admin-panel" class="hidden mt-6 space-y-6">
-            
+
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-bold mb-4 text-gray-700 border-b pb-2">ลิงก์สำหรับแชร์ของคุณ</h2>
                 <p class="text-sm text-gray-600 mb-2">คัดลอกลิงก์นี้ไปให้ลูกค้าของคุณ เมื่อมีการสั่งซื้อจะถูกบันทึกภายใต้ชื่อของคุณ</p>
@@ -50,14 +50,14 @@
                     <div><label for="price-input" class="block font-medium text-gray-600">ราคาต่อหน่วย (บาท):</label><input type="number" id="price-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="เช่น 20"></div>
                     <div><label for="header-text-input" class="block font-medium text-gray-600">ข้อความหัวข้อหลัก:</label><input type="text" id="header-text-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="เช่น จองเลขนำโชค"></div>
                     <div class="md:col-span-2">
-    <label for="qr-id-input" class="block font-medium text-gray-600">ลิงก์ QR Code พื้นฐาน (PromptPay):</label>
-    <div class="mt-1 flex rounded-md shadow-sm">
-        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-            https://promptpay.io/
-        </span>
-        <input type="text" id="qr-id-input" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border-gray-300" placeholder="หมายเลขโทรศัพท์">
-    </div>
-</div>>
+                        <label for="qr-id-input" class="block font-medium text-gray-600">ลิงก์ QR Code พื้นฐาน (PromptPay):</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                https://promptpay.io/
+                            </span>
+                            <input type="text" id="qr-id-input" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border-gray-300" placeholder="หมายเลขโทรศัพท์">
+                        </div>
+                    </div>
                     <div><label for="header-color-input" class="block font-medium text-gray-600">สีของหัวข้อหลัก:</label><input type="color" id="header-color-input" class="mt-1 h-10 w-20 p-1 block border-gray-300 rounded-md"></div>
                     <div class="md:col-span-2"><label for="remark-text-input" class="block font-medium text-gray-600">ข้อความหมายเหตุ (แสดงใต้ตาราง):</label><textarea id="remark-text-input" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="เช่น หากยอดจองไม่ถึง 60% จะทำการยกเลิก"></textarea></div>
                     <div class="md:col-span-2"><label for="closing-time-input" class="block font-medium text-gray-600">ตั้งเวลาปิดการขาย (ปล่อยว่างถ้าไม่ต้องการ):</label><input type="datetime-local" id="closing-time-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
@@ -68,10 +68,22 @@
             <div class="bg-white p-6 rounded-lg shadow">
                  <h2 class="text-xl font-bold mb-4 text-gray-700 border-b pb-2">แดชบอร์ดการจอง (Real-time)</h2>
                  <div class="filter-buttons mb-4 space-x-2"><button data-filter="all" class="px-4 py-2 text-sm rounded-full bg-blue-500 text-white">ทั้งหมด</button><button data-filter="pending" class="px-4 py-2 text-sm rounded-full bg-gray-200 hover:bg-gray-300">รอจ่ายเงิน</button><button data-filter="paid" class="px-4 py-2 text-sm rounded-full bg-gray-200 hover:bg-gray-300">จ่ายแล้ว</button><button data-filter="sold" class="px-4 py-2 text-sm rounded-full bg-gray-200 hover:bg-gray-300">ขายแล้ว</button></div>
-                 <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">
-                     <thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เลข</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อลูกค้า</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เบอร์โทร</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เวลาอัปเดต</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th></tr></thead>
-                     <tbody id="bookings-table-body" class="bg-white divide-y divide-gray-200"></tbody>
-                 </table></div>
+                 <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เลข</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อลูกค้า</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เบอร์โทร</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เวลาอัปเดต</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สลิป</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookings-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow">
@@ -94,356 +106,373 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, orderBy, updateDoc, writeBatch, getDocs, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyAq8geAdou5f83klHd_hOqF8CH5eNbj4zE",
-    authDomain: "my-lucky-shop.firebaseapp.com",
-    projectId: "my-lucky-shop",
-    storageBucket: "my-lucky-shop.firebasestorage.app",
-    messagingSenderId: "370639731201",
-    appId: "1:370639731201:web:a4f8007a96fe5f7705de00"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAq8geAdou5f83klHd_hOqF8CH5eNbj4zE",
+            authDomain: "my-lucky-shop.firebaseapp.com",
+            projectId: "my-lucky-shop",
+            storageBucket: "my-lucky-shop.appspot.com",
+            messagingSenderId: "370639731201",
+            appId: "1:370639731201:web:a4f8007a96fe5f7705de00"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+        let currentUserId = null;
+        let currentFilter = "all";
+        let unsubscribeBookings = null;
 
-let currentUserId = null;
-let currentFilter = "all";
-let unsubscribeBookings = null;
+        const TEMPLATE_SELLER_ID = "SrgFGm21I8hX4HO1BgEiNJ0oJvV2"; 
 
-// ใส่ User UID ของบัญชีที่คุณต้องการให้เป็น "ต้นแบบ"
-const TEMPLATE_SELLER_ID = "SrgFGm21I8hX4HO1BgEiNJ0oJvV2"; // <-- ตรวจสอบว่า UID นี้ถูกต้อง
+        // --- DOM Elements ---
+        const loginButton = document.getElementById("login-button"),
+            logoutButton = document.getElementById("logout-button"),
+            userInfoDiv = document.getElementById("user-info"),
+            userNameSpan = document.getElementById("user-name"),
+            adminPanelDiv = document.getElementById("admin-panel"),
+            loadingText = document.getElementById("loading-text"),
+            referralLinkDisplay = document.getElementById("referral-link-display"),
+            displayNameInput = document.getElementById("display-name-input"),
+            saveProfileButton = document.getElementById("save-profile-button"),
+            profileFeedback = document.getElementById("profile-feedback"),
+            priceInput = document.getElementById("price-input"),
+            qrIdInput = document.getElementById("qr-id-input"),
+            headerTextInput = document.getElementById("header-text-input"),
+            headerColorInput = document.getElementById("header-color-input"),
+            remarkTextInput = document.getElementById("remark-text-input"),
+            closingTimeInput = document.getElementById("closing-time-input"),
+            saveSettingsButton = document.getElementById("save-settings-button"),
+            settingsFeedback = document.getElementById("settings-feedback"),
+            bookingsTableBody = document.getElementById("bookings-table-body"),
+            resetSystemButton = document.getElementById("reset-system-button"),
+            prizeNumberInput = document.getElementById("prize-number-input"),
+            checkPrizeButton = document.getElementById("check-prize-button"),
+            prizeResultDisplay = document.getElementById("prize-result-display"),
+            filterButtons = document.querySelector(".filter-buttons");
 
-// --- DOM Elements ---
-const loginButton = document.getElementById("login-button"),
-    logoutButton = document.getElementById("logout-button"),
-    userInfoDiv = document.getElementById("user-info"),
-    userNameSpan = document.getElementById("user-name"),
-    adminPanelDiv = document.getElementById("admin-panel"),
-    loadingText = document.getElementById("loading-text"),
-    referralLinkDisplay = document.getElementById("referral-link-display"),
-    displayNameInput = document.getElementById("display-name-input"),
-    saveProfileButton = document.getElementById("save-profile-button"),
-    profileFeedback = document.getElementById("profile-feedback"),
-    priceInput = document.getElementById("price-input"),
-    qrIdInput = document.getElementById("qr-id-input"),
-    headerTextInput = document.getElementById("header-text-input"),
-    headerColorInput = document.getElementById("header-color-input"),
-    remarkTextInput = document.getElementById("remark-text-input"),
-    closingTimeInput = document.getElementById("closing-time-input"),
-    saveSettingsButton = document.getElementById("save-settings-button"),
-    settingsFeedback = document.getElementById("settings-feedback"),
-    bookingsTableBody = document.getElementById("bookings-table-body"),
-    resetSystemButton = document.getElementById("reset-system-button"),
-    prizeNumberInput = document.getElementById("prize-number-input"),
-    checkPrizeButton = document.getElementById("check-prize-button"),
-    prizeResultDisplay = document.getElementById("prize-result-display"),
-    filterButtons = document.querySelector(".filter-buttons");
-
-// --- ฟังก์ชันทั้งหมดที่จำเป็น ---
-
-async function loadSellerProfile(uid) {
-    const sellerSnap = await getDoc(doc(db, "sellers", uid));
-    if (sellerSnap.exists()) {
-        displayNameInput.value = sellerSnap.data().displayName || '';
-    }
-}
-
-async function saveSellerProfile() {
-    if (!currentUserId) return;
-    const name = displayNameInput.value.trim();
-    if (!name) {
-        profileFeedback.textContent = "กรุณาใส่ชื่อที่ใช้แสดง";
-        profileFeedback.className = "mb-4 font-semibold text-red-500";
-        return;
-    }
-    try {
-        await setDoc(doc(db, "sellers", currentUserId), { displayName: name, updatedAt: serverTimestamp() }, { merge: true });
-        profileFeedback.textContent = "บันทึกโปรไฟล์สำเร็จ!";
-        profileFeedback.className = "mb-4 font-semibold text-green-500";
-    } catch (error) {
-        console.error("Error saving profile:", error);
-        profileFeedback.textContent = "เกิดข้อผิดพลาด";
-        profileFeedback.className = "mb-4 font-semibold text-red-500";
-    }
-}
-
-async function loadShopConfig(uid) {
-    const configSnap = await getDoc(doc(db, `sellers/${uid}/shopConfig`, "config"));
-    if (configSnap.exists()) {
-        const config = configSnap.data();
-        priceInput.value = config.pricePerNumber || '';
-        const fullUrl = config.baseQRCodeURL || '';
-        qrIdInput.value = fullUrl.replace('https://promptpay.io/', '');
-        headerTextInput.value = config.headerText || '';
-        headerColorInput.value = config.headerColor || '#4f46e5';
-        remarkTextInput.value = config.remarkText || '';
-        const closingTime = config.closingTime?.toDate();
-        if (closingTime) {
-            closingTimeInput.value = new Date(closingTime.getTime() - (closingTime.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-        } else {
-            closingTimeInput.value = "";
-        }
-    } else {
-        headerColorInput.value = '#4f46e5';
-    }
-}
-
-async function saveShopConfig() {
-    if (!currentUserId) return;
-    
-    const qrId = qrIdInput.value.trim();
-    const fullQrUrl = qrId ? `https://promptpay.io/${qrId}` : '';
-    const price = Number(priceInput.value);
-    const headerText = headerTextInput.value.trim();
-    const headerColor = headerColorInput.value;
-    const remarkText = remarkTextInput.value.trim();
-    const closingTimeValue = closingTimeInput.value ? new Date(closingTimeInput.value) : null;
-
-    if (!price || !fullQrUrl || !headerText) {
-        settingsFeedback.textContent = "กรุณากรอกข้อมูลหลักให้ครบ (ราคา, QR, หัวข้อหลัก)";
-        settingsFeedback.className = "mb-4 font-semibold text-red-500";
-        return;
-    }
-    try {
-        await setDoc(doc(db, `sellers/${currentUserId}/shopConfig`, "config"), {
-            pricePerNumber: price,
-            baseQRCodeURL: fullQrUrl,
-            headerText: headerText,
-            headerColor: headerColor,
-            remarkText: remarkText,
-            closingTime: closingTimeValue
-        }, { merge: true });
-        settingsFeedback.textContent = "บันทึกการตั้งค่าสำเร็จ!";
-        settingsFeedback.className = "mb-4 font-semibold text-green-500";
-    } catch (error) {
-        console.error("Error saving config:", error);
-        settingsFeedback.textContent = "เกิดข้อผิดพลาด";
-        settingsFeedback.className = "mb-4 font-semibold text-red-500";
-    }
-}
-
-function listenForBookings(uid) {
-    if (unsubscribeBookings) unsubscribeBookings();
-    const q = query(collection(db, `sellers/${uid}/numbers`), orderBy("paidAt", "desc"));
-    unsubscribeBookings = onSnapshot(q, (snapshot) => {
-        const docs = snapshot.docs.filter(doc => currentFilter === 'all' || doc.data().status === currentFilter);
-        bookingsTableBody.innerHTML = '';
-        if (docs.length === 0) {
-            bookingsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">ไม่พบข้อมูล</td></tr>';
-            return;
-        }
-        docs.forEach(doc => {
-            const booking = doc.data();
-            const row = document.createElement('tr');
-            const timestamp = booking.paidAt?.toDate();
-            const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
-            
-            let actionButtons = '';
-            if (booking.status === 'needs_review') {
-                actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
+        async function loadSellerProfile(uid) {
+            const sellerSnap = await getDoc(doc(db, "sellers", uid));
+            if (sellerSnap.exists()) {
+                displayNameInput.value = sellerSnap.data().displayName || '';
             }
-            if (booking.status === 'needs_review' || booking.status === 'sold') {
-                actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
-            }
-            if(actionButtons === '') actionButtons = '-';
-            
-            let statusClass = "text-gray-500";
-            if (booking.status === 'needs_review') statusClass = 'text-blue-500';
-            if (booking.status === 'sold') statusClass = 'text-green-600';
-
-            row.innerHTML = `<td class="px-6 py-4 font-bold">${doc.id}</td><td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-6 py-4">${booking.customerName || '-'}</td><td class="px-6 py-4">${booking.customerPhone || '-'}</td><td class="px-6 py-4">${formattedTime}</td><td class="px-6 py-4">${actionButtons}</td>`;
-            bookingsTableBody.appendChild(row);
-        });
-    });
-}
-
-async function handleConfirmPayment(numberId) {
-    if (!currentUserId) return;
-    if (confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) {
-        try {
-            await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
-            alert(`ยืนยันสำเร็จ!`);
-        } catch (error) {
-            console.error("Error confirming payment:", error);
-            alert("เกิดข้อผิดพลาดในการยืนยัน: " + error.message);
         }
-    }
-}
 
-async function handleCancelBooking(numberId) {
-    if (!currentUserId) return;
-
-    if (!confirm(`คุณต้องการยกเลิกการจองหมายเลข ${numberId} จริงๆ ใช่ไหม? การกระทำนี้จะทำให้หมายเลขกลับไปว่างอีกครั้ง`)) {
-        return;
-    }
-
-    const confirmationText = "ยกเลิกทันที";
-    const userInput = prompt(`เพื่อยืนยันการยกเลิก โปรดพิมพ์คำว่า "${confirmationText}" ลงในช่องด้านล่าง`);
-
-    if (userInput !== confirmationText) {
-        alert("การยืนยันไม่ถูกต้อง การยกเลิกถูกยกเลิก");
-        return;
-    }
-
-    try {
-        await deleteDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId));
-        alert(`ยกเลิกหมายเลข ${numberId} สำเร็จแล้ว หมายเลขนี้กลับไปสู่สถานะว่าง`);
-    } catch (error) {
-        console.error("Error cancelling booking:", error);
-        alert("เกิดข้อผิดพลาดในการยกเลิก: " + error.message);
-    }
-}
-async function handleTotalReset() {
-    if (!currentUserId) return;
-    const confirmationText = "รีเซ็ตเดี๋ยวนี้";
-    if (prompt(`ข้อมูลการจอง "ทั้งหมด" ของคุณจะถูกลบอย่างถาวร\n\nหากแน่ใจ พิมพ์คำว่า "${confirmationText}" เพื่อยืนยัน`) !== confirmationText) {
-        alert("การรีเซ็ตถูกยกเลิก");
-        return;
-    }
-    try {
-        const numbersCollectionRef = collection(db, `sellers/${currentUserId}/numbers`);
-        const querySnapshot = await getDocs(query(numbersCollectionRef));
-        if (querySnapshot.empty) {
-            alert("ไม่พบข้อมูลให้รีเซ็ต");
-            return;
-        }
-        const batch = writeBatch(db);
-        querySnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-        alert("รีเซ็ตระบบสำเร็จ!");
-    } catch (error) {
-        console.error("Error resetting system:", error);
-        alert("เกิดข้อผิดพลาดในการรีเซ็ตระบบ");
-    }
-}
-async function handlePrizeCheck() {
-    if (!currentUserId) return;
-    const number = prizeNumberInput.value.padStart(2, '0');
-    if (number.length !== 2 || isNaN(number)) {
-        alert("กรุณาใส่เลข 2 หลัก");
-        return;
-    }
-    prizeResultDisplay.classList.add('hidden');
-    const docSnap = await getDoc(doc(db, `sellers/${currentUserId}/numbers`, number));
-    if (docSnap.exists() && docSnap.data().status === 'sold') {
-        const winner = docSnap.data();
-        prizeResultDisplay.innerHTML = `<p class="font-bold text-green-600">ขอแสดงความยินดี!</p><p>ผู้โชคดีคือ:</p><p><strong>ชื่อ:</strong> ${winner.customerName}</p><p><strong>เบอร์โทร:</strong> ${winner.customerPhone}</p>`;
-    } else {
-        prizeResultDisplay.innerHTML = `<p class="font-semibold text-gray-600">ไม่มีผู้ซื้อเลข <strong>${number}</strong></p>`;
-    }
-    prizeResultDisplay.classList.remove('hidden');
-}
-
-const loginFunction = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (error) {
-        console.error("Popup login failed:", error);
-        alert("การล็อกอินล้มเหลว: " + error.message);
-    }
-};
-
-const logoutFunction = () => {
-    if (unsubscribeBookings) unsubscribeBookings();
-    signOut(auth);
-};
-
-async function checkUserStatus(user) {
-    if (!user) {
-        loadingText.classList.add('hidden');
-        loginButton.style.display = 'block';
-        adminPanelDiv.classList.add("hidden");
-        userInfoDiv.classList.add("hidden");
-        return;
-    }
-    const adminDocRef = doc(db, "admins", user.uid);
-    const adminDocSnap = await getDoc(adminDocRef);
-    if (!adminDocSnap.exists()) {
-        loadingText.classList.add('hidden');
-        adminPanelDiv.classList.add("hidden");
-        userInfoDiv.classList.add("hidden");
-        document.getElementById('access-denied').classList.remove('hidden');
-        signOut(auth);
-        return;
-    }
-    currentUserId = user.uid;
-    userNameSpan.textContent = user.displayName || user.email;
-    const sellerDocRef = doc(db, "sellers", user.uid);
-    const sellerDocSnap = await getDoc(sellerDocRef);
-    if (!sellerDocSnap.exists()) {
-        console.log(`แอดมินใหม่: ${user.email}, กำลังคัดลอกการตั้งค่า...`);
-        try {
-            const templateConfigRef = doc(db, `sellers/${TEMPLATE_SELLER_ID}/shopConfig`, "config");
-            const templateConfigSnap = await getDoc(templateConfigRef);
-            if (!templateConfigSnap.exists()) {
-                throw new Error("ไม่พบการตั้งค่าของบัญชีต้นแบบ");
+        async function saveSellerProfile() {
+            if (!currentUserId) return;
+            const name = displayNameInput.value.trim();
+            if (!name) {
+                profileFeedback.textContent = "กรุณาใส่ชื่อที่ใช้แสดง";
+                profileFeedback.className = "mb-4 font-semibold text-red-500";
+                return;
             }
-            const templateData = templateConfigSnap.data();
-            await setDoc(sellerDocRef, {
-                displayName: user.displayName || 'แอดมินใหม่',
-                email: user.email,
-                createdAt: serverTimestamp()
+            try {
+                await setDoc(doc(db, "sellers", currentUserId), { displayName: name, updatedAt: serverTimestamp() }, { merge: true });
+                profileFeedback.textContent = "บันทึกโปรไฟล์สำเร็จ!";
+                profileFeedback.className = "mb-4 font-semibold text-green-500";
+            } catch (error) {
+                console.error("Error saving profile:", error);
+                profileFeedback.textContent = "เกิดข้อผิดพลาด";
+                profileFeedback.className = "mb-4 font-semibold text-red-500";
+            }
+        }
+
+        async function loadShopConfig(uid) {
+            const configSnap = await getDoc(doc(db, `sellers/${uid}/shopConfig`, "config"));
+            if (configSnap.exists()) {
+                const config = configSnap.data();
+                priceInput.value = config.pricePerNumber || '';
+                const fullUrl = config.baseQRCodeURL || '';
+                qrIdInput.value = fullUrl.replace('https://promptpay.io/', '');
+                headerTextInput.value = config.headerText || '';
+                headerColorInput.value = config.headerColor || '#4f46e5';
+                remarkTextInput.value = config.remarkText || '';
+                const closingTime = config.closingTime?.toDate();
+                if (closingTime) {
+                    closingTimeInput.value = new Date(closingTime.getTime() - (closingTime.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                } else {
+                    closingTimeInput.value = "";
+                }
+            } else {
+                headerColorInput.value = '#4f46e5';
+            }
+        }
+
+        async function saveShopConfig() {
+            if (!currentUserId) return;
+
+            const qrId = qrIdInput.value.trim();
+            const fullQrUrl = qrId ? `https://promptpay.io/${qrId}` : '';
+            const price = Number(priceInput.value);
+            const headerText = headerTextInput.value.trim();
+            const headerColor = headerColorInput.value;
+            const remarkText = remarkTextInput.value.trim();
+            const closingTimeValue = closingTimeInput.value ? new Date(closingTimeInput.value) : null;
+
+            if (!price || !fullQrUrl || !headerText) {
+                settingsFeedback.textContent = "กรุณากรอกข้อมูลหลักให้ครบ (ราคา, QR, หัวข้อหลัก)";
+                settingsFeedback.className = "mb-4 font-semibold text-red-500";
+                return;
+            }
+            try {
+                await setDoc(doc(db, `sellers/${currentUserId}/shopConfig`, "config"), {
+                    pricePerNumber: price,
+                    baseQRCodeURL: fullQrUrl,
+                    headerText: headerText,
+                    headerColor: headerColor,
+                    remarkText: remarkText,
+                    closingTime: closingTimeValue
+                }, { merge: true });
+                settingsFeedback.textContent = "บันทึกการตั้งค่าสำเร็จ!";
+                settingsFeedback.className = "mb-4 font-semibold text-green-500";
+            } catch (error) {
+                console.error("Error saving config:", error);
+                settingsFeedback.textContent = "เกิดข้อผิดพลาด";
+                settingsFeedback.className = "mb-4 font-semibold text-red-500";
+            }
+        }
+
+        function listenForBookings(uid) {
+            if (unsubscribeBookings) unsubscribeBookings();
+            const q = query(collection(db, `sellers/${uid}/numbers`), orderBy("paidAt", "desc"));
+            unsubscribeBookings = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs.filter(doc => currentFilter === 'all' || doc.data().status === currentFilter);
+                bookingsTableBody.innerHTML = '';
+                if (docs.length === 0) {
+                    bookingsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4">ไม่พบข้อมูล</td></tr>`;
+                    return;
+                }
+                docs.forEach(doc => {
+                    const booking = doc.data();
+                    const row = document.createElement('tr');
+                    const timestamp = booking.paidAt?.toDate();
+                    const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
+
+                    let actionButtons = '';
+                    if (booking.status === 'needs_review') {
+                        actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
+                    }
+                    if (booking.status === 'needs_review' || booking.status === 'sold') {
+                        actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
+                    }
+
+                    const slipCell = booking.slipUrl ? `<a href="${booking.slipUrl}" target="_blank" class="text-blue-600 hover:underline">ดูสลิป</a>` : '-';
+                    let statusClass = "text-gray-500";
+                    if(booking.status === 'needs_review') statusClass = 'text-blue-500';
+                    if(booking.status === 'sold') statusClass = 'text-green-600';
+
+                    row.innerHTML = `<td class="px-4 py-4 font-bold">${doc.id}</td><td class="px-4 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-4 py-4">${booking.customerName || '-'}</td><td class="px-4 py-4">${booking.customerPhone || '-'}</td><td class="px-4 py-4">${formattedTime}</td><td class="px-4 py-4">${actionButtons || '-'}</td><td class="px-4 py-4">${slipCell}</td>`;
+                    bookingsTableBody.appendChild(row);
+                });
             });
-            await setDoc(doc(db, `sellers/${user.uid}/shopConfig`, "config"), {
-                pricePerNumber: templateData.pricePerNumber || 0,
-                headerText: templateData.headerText || '',
-                headerColor: templateData.headerColor || '#000000',
-                remarkText: templateData.remarkText || '',
-                baseQRCodeURL: '',
-                closingTime: null
-            });
-        } catch (cloneError) {
-            console.error("เกิดข้อผิดพลาดระหว่างการโคลนค่า:", cloneError);
-            alert("เกิดข้อผิดพลาดในการตั้งค่าโปรไฟล์เริ่มต้น: " + cloneError.message);
+        }
+
+        async function handleConfirmPayment(numberId) {
+            if (!currentUserId) return;
+            if (confirm(`ยืนยันการขายเลข ${numberId} ใช่หรือไม่?`)) {
+                try {
+                    await updateDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId), { status: "sold" });
+                    alert(`ยืนยันสำเร็จ!`);
+                } catch (error) {
+                    console.error("Error confirming payment:", error);
+                    alert("เกิดข้อผิดพลาดในการยืนยัน: " + error.message);
+                }
+            }
+        }
+
+        async function handleCancelBooking(numberId) {
+            if (!currentUserId) return;
+            if (!confirm(`คุณต้องการยกเลิกการจองหมายเลข ${numberId} จริงๆ ใช่ไหม? การกระทำนี้จะทำให้หมายเลขกลับไปว่างอีกครั้ง`)) {
+                return;
+            }
+            const confirmationText = "ยกเลิกทันที";
+            const userInput = prompt(`เพื่อยืนยันการยกเลิก โปรดพิมพ์คำว่า "${confirmationText}" ลงในช่องด้านล่าง`);
+            if (userInput !== confirmationText) {
+                alert("การยืนยันไม่ถูกต้อง การยกเลิกถูกยกเลิก");
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, `sellers/${currentUserId}/numbers`, numberId));
+                alert(`ยกเลิกหมายเลข ${numberId} สำเร็จแล้ว หมายเลขนี้กลับไปสู่สถานะว่าง`);
+            } catch (error) {
+                console.error("Error cancelling booking:", error);
+                alert("เกิดข้อผิดพลาดในการยกเลิก: " + error.message);
+            }
+        }
+
+       async function handleTotalReset() {
+            if (!currentUserId) return;
+            const confirmationText = "รีเซ็ตเดี๋ยวนี้";
+            if (prompt(`ข้อมูลการจอง "ทั้งหมด" และไฟล์สลิปที่เกี่ยวข้องจะถูกลบอย่างถาวร\n\nหากแน่ใจ พิมพ์คำว่า "${confirmationText}" เพื่อยืนยัน`) !== confirmationText) {
+                alert("การรีเซ็ตถูกยกเลิก");
+                return;
+            }
+
+            try {
+                const numbersCollectionRef = collection(db, `sellers/${currentUserId}/numbers`);
+                const querySnapshot = await getDocs(query(numbersCollectionRef));
+
+                if (querySnapshot.empty) {
+                    alert("ไม่พบข้อมูลให้รีเซ็ต");
+                    return;
+                }
+
+                const firestoreBatch = writeBatch(db);
+                const storageDeletePromises = [];
+
+                querySnapshot.forEach(docSnap => {
+                    firestoreBatch.delete(docSnap.ref);
+                    if (docSnap.data().slipUrl) {
+                        const fileRef = ref(storage, `slips/${currentUserId}/${docSnap.id}`);
+                        storageDeletePromises.push(deleteObject(fileRef).catch(err => {
+                            if (err.code === 'storage/object-not-found') {
+                                console.warn(`Slip file not found for number ${docSnap.id}, skipping deletion.`);
+                                return;
+                            }
+                            throw err;
+                        }));
+                    }
+                });
+
+                await Promise.all([
+                    firestoreBatch.commit(),
+                    ...storageDeletePromises
+                ]);
+
+                alert("รีเซ็ตระบบและล้างข้อมูลสลิปสำเร็จ!");
+
+            } catch (error) {
+                console.error("Error resetting system:", error);
+                alert("เกิดข้อผิดพลาดในการรีเซ็ตระบบ: " + error.message);
+            }
+        }
+        
+        async function handlePrizeCheck() {
+            if (!currentUserId) return;
+            const number = prizeNumberInput.value.padStart(2, '0');
+            if (number.length !== 2 || isNaN(number)) {
+                alert("กรุณาใส่เลข 2 หลัก");
+                return;
+            }
+            prizeResultDisplay.classList.add('hidden');
+            const docSnap = await getDoc(doc(db, `sellers/${currentUserId}/numbers`, number));
+            if (docSnap.exists() && docSnap.data().status === 'sold') {
+                const winner = docSnap.data();
+                prizeResultDisplay.innerHTML = `<p class="font-bold text-green-600">ขอแสดงความยินดี!</p><p>ผู้โชคดีคือ:</p><p><strong>ชื่อ:</strong> ${winner.customerName}</p><p><strong>เบอร์โทร:</strong> ${winner.customerPhone}</p>`;
+            } else {
+                prizeResultDisplay.innerHTML = `<p class="font-semibold text-gray-600">ไม่มีผู้ซื้อเลข <strong>${number}</strong></p>`;
+            }
+            prizeResultDisplay.classList.remove('hidden');
+        }
+
+        const loginFunction = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Popup login failed:", error);
+                alert("การล็อกอินล้มเหลว: " + error.message);
+            }
+        };
+
+        const logoutFunction = () => {
+            if (unsubscribeBookings) unsubscribeBookings();
+            signOut(auth);
+        };
+
+        async function checkUserStatus(user) {
+            if (!user) {
+                loadingText.classList.add('hidden');
+                loginButton.style.display = 'block';
+                adminPanelDiv.classList.add("hidden");
+                userInfoDiv.classList.add("hidden");
+                return;
+            }
+            const adminDocRef = doc(db, "admins", user.uid);
+            const adminDocSnap = await getDoc(adminDocRef);
+            if (!adminDocSnap.exists()) {
+                loadingText.classList.add('hidden');
+                adminPanelDiv.classList.add("hidden");
+                userInfoDiv.classList.add("hidden");
+                document.getElementById('access-denied').classList.remove('hidden');
+                signOut(auth);
+                return;
+            }
+            currentUserId = user.uid;
+            userNameSpan.textContent = user.displayName || user.email;
+            const sellerDocRef = doc(db, "sellers", user.uid);
+            const sellerDocSnap = await getDoc(sellerDocRef);
+            if (!sellerDocSnap.exists()) {
+                console.log(`แอดมินใหม่: ${user.email}, กำลังคัดลอกการตั้งค่า...`);
+                try {
+                    const templateConfigRef = doc(db, `sellers/${TEMPLATE_SELLER_ID}/shopConfig`, "config");
+                    const templateConfigSnap = await getDoc(templateConfigRef);
+                    if (!templateConfigSnap.exists()) {
+                        throw new Error("ไม่พบการตั้งค่าของบัญชีต้นแบบ");
+                    }
+                    const templateData = templateConfigSnap.data();
+                    await setDoc(sellerDocRef, {
+                        displayName: user.displayName || 'แอดมินใหม่',
+                        email: user.email,
+                        createdAt: serverTimestamp()
+                    });
+                    await setDoc(doc(db, `sellers/${user.uid}/shopConfig`, "config"), {
+                        pricePerNumber: templateData.pricePerNumber || 0,
+                        headerText: templateData.headerText || '',
+                        headerColor: templateData.headerColor || '#000000',
+                        remarkText: templateData.remarkText || '',
+                        baseQRCodeURL: '',
+                        closingTime: null
+                    });
+                } catch (cloneError) {
+                    console.error("เกิดข้อผิดพลาดระหว่างการโคลนค่า:", cloneError);
+                    alert("เกิดข้อผิดพลาดในการตั้งค่าโปรไฟล์เริ่มต้น: " + cloneError.message);
+                    loadingText.classList.add('hidden');
+                    signOut(auth);
+                    return;
+                }
+            }
+            loginButton.style.display = 'none';
+            userInfoDiv.classList.remove("hidden");
+            adminPanelDiv.classList.remove("hidden");
             loadingText.classList.add('hidden');
-signOut(auth);
-            return;
+            referralLinkDisplay.value = `${window.location.origin}/index.html?seller=${user.uid}`;
+            await loadSellerProfile(user.uid);
+            await loadShopConfig(user.uid);
+            listenForBookings(user.uid);
         }
-    }
-    loginButton.style.display = 'none';
-    userInfoDiv.classList.remove("hidden");
-    adminPanelDiv.classList.remove("hidden");
-    loadingText.classList.add('hidden');
-    referralLinkDisplay.value = `${window.location.origin}/index.html?seller=${user.uid}`;
-    await loadSellerProfile(user.uid);
-    await loadShopConfig(user.uid);
-    listenForBookings(user.uid);
-}
 
-// --- Event Listeners ---
-loginButton.addEventListener('click', loginFunction);
-logoutButton.addEventListener('click', logoutFunction);
-saveSettingsButton.addEventListener('click', saveShopConfig);
-saveProfileButton.addEventListener('click', saveSellerProfile);
-resetSystemButton.addEventListener('click', handleTotalReset);
-checkPrizeButton.addEventListener('click', handlePrizeCheck);
-filterButtons.addEventListener('click', (event) => {
-    if (event.target.tagName === 'BUTTON' && currentUserId) {
-        document.querySelector('.filter-buttons button.bg-blue-500').classList.replace('bg-blue-500','bg-gray-200');
-        event.target.classList.replace('bg-gray-200', 'bg-blue-500');
-        currentFilter = event.target.dataset.filter;
-        listenForBookings(currentUserId);
-    }
-});
-bookingsTableBody.addEventListener('click', (event) => {
-    if (event.target?.classList.contains('confirm-btn')) {
-        handleConfirmPayment(event.target.dataset.id);
-    } else if (event.target?.classList.contains('cancel-btn')) {
-        handleCancelBooking(event.target.dataset.id);
-    }
-});
+        // --- Event Listeners ---
+        loginButton.addEventListener('click', loginFunction);
+        logoutButton.addEventListener('click', logoutFunction);
+        saveSettingsButton.addEventListener('click', saveShopConfig);
+        saveProfileButton.addEventListener('click', saveSellerProfile);
+        resetSystemButton.addEventListener('click', handleTotalReset);
+        checkPrizeButton.addEventListener('click', handlePrizeCheck);
+        filterButtons.addEventListener('click', (event) => {
+            if (event.target.tagName === 'BUTTON' && currentUserId) {
+                document.querySelector('.filter-buttons button.bg-blue-500').classList.replace('bg-blue-500','bg-gray-200');
+                event.target.classList.replace('bg-gray-200', 'bg-blue-500');
+                currentFilter = event.target.dataset.filter;
+                listenForBookings(currentUserId);
+            }
+        });
+        bookingsTableBody.addEventListener('click', (event) => {
+            if (event.target?.classList.contains('confirm-btn')) {
+                handleConfirmPayment(event.target.dataset.id);
+            } else if (event.target?.classList.contains('cancel-btn')) {
+                handleCancelBooking(event.target.dataset.id);
+            }
+        });
 
-// --- Main execution ---
-loadingText.classList.remove('hidden');
-onAuthStateChanged(auth, checkUserStatus);
-
+        // --- Main execution ---
+        loadingText.classList.remove('hidden');
+        onAuthStateChanged(auth, checkUserStatus);
     </script>
 </body>
 </html>
