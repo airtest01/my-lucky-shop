@@ -1,5 +1,4 @@
 const admin = require('firebase-admin');
-// แก้ไขการ import: ไม่ต้อง import runTransaction โดยตรง
 const { getFirestore } = require('firebase-admin/firestore');
 
 // --- ส่วนการเชื่อมต่อ (เหมือนเดิม) ---
@@ -29,7 +28,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers };
   }
-
+  
   if (event.httpMethod !== 'POST') {
       return { statusCode: 405, headers, body: 'Method Not Allowed' };
   }
@@ -41,17 +40,18 @@ exports.handler = async (event) => {
         throw new Error('ข้อมูลสำหรับจองไม่สมบูรณ์');
     }
 
-    // แก้ไขการเรียกใช้: เปลี่ยนจาก runTransaction(db, ...) เป็น db.runTransaction(...)
     await db.runTransaction(async (transaction) => {
         const docRefs = selectedNumbers.map(num => db.collection('sellers').doc(sellerId).collection('numbers').doc(num));
-
+        
         for (const docRef of docRefs) {
             const docSnap = await transaction.get(docRef);
-            if (docSnap.exists()) {
+            
+            // --- แก้ไขจุดนี้: เปลี่ยนจาก .exists() เป็น .exists ---
+            if (docSnap.exists) { 
                 throw new Error(`ขออภัย, เลข ${docRef.id} เพิ่งถูกจองไปแล้ว`);
             }
         }
-
+        
         const reservationData = {
             status: "pending",
             customerName: customerData.name,
