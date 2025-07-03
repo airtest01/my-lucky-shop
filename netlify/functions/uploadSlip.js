@@ -29,8 +29,8 @@ const visionClient = new vision.ImageAnnotatorClient({
 });
 
 const db = getFirestore();
-// แก้ไขการเชื่อมต่อ Bucket ให้ถูกต้องและดีที่สุด
-const bucket = getStorage().bucket();
+// แก้ไขการเชื่อมต่อ Bucket เป็นครั้งสุดท้าย โดยระบุชื่อให้ชัดเจน
+const bucket = getStorage().bucket("my-lucky-shop.appspot.com");
 
 // --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาข้อมูล (เวอร์ชันปรับปรุง) ---
 
@@ -42,7 +42,6 @@ const bucket = getStorage().bucket();
 function findAmount(text) {
     const amountRegex = /(\d{1,3}(?:,\d{3})*|\d+)\.\d{2}/g;
     
-    // Pattern 1: มองหา Keywords แล้วตามด้วยตัวเลข (รองรับ K+, SCB, BBL)
     const keywordPatterns = [
         /(?:จำนวนเงิน|Amount|ยอดชำระ|ยอดเงิน|โอนเงินสำเร็จ)\s*([^\n]*)/i,
         /([^\n]*)\s*(?:จำนวนเงิน|Amount|ยอดชำระ|ยอดเงิน)/i
@@ -58,7 +57,6 @@ function findAmount(text) {
         }
     }
 
-    // Pattern 2: (Fallback) ถ้าไม่มี Keyword, ให้หาตัวเลขเดี่ยวๆ ที่มีขนาดใหญ่และเด่นชัด (มักเป็นยอดโอน)
     const lines = text.split('\n');
     let potentialAmounts = [];
     for (const line of lines) {
@@ -80,19 +78,17 @@ function findAmount(text) {
  * @returns {string|null} รหัสอ้างอิงที่หาได้ หรือ null ถ้าหาไม่เจอ
  */
 function findTransactionId(text) {
-    // ลบช่องว่าง, ขึ้นบรรทัดใหม่, และขีดกลาง ออกไปก่อนเพื่อการจับคู่ที่ง่ายขึ้น
     const cleanedText = text.replace(/[\s\n-]/g, '');
     
     const patterns = [
-        /(?<=รหัสอ้างอิง|เลขที่รายการ|RefNo|Ref)\s*:?\s*([A-Z0-9|]+)/i, // Pattern 1: หาจาก Keyword ก่อน (ดีที่สุด)
-        /[A-Z0-9|]{20,}/, // Pattern 2: สำหรับ GSB, KBank (ตัวอักษรตัวเลขยาวๆ)
-        /\d{15,}/ // Pattern 3: (Fallback) หาตัวเลขล้วนยาวๆ
+        /(?<=รหัสอ้างอิง|เลขที่รายการ|RefNo|Ref)\s*:?\s*([A-Z0-9|]+)/i,
+        /[A-Z0-9|]{20,}/,
+        /\d{15,}/
     ];
 
     for (const pattern of patterns) {
         const match = cleanedText.match(pattern);
         if (match && match[0]) {
-            // ถ้าเป็น Pattern 1 จะมี Group ที่ 1 ซึ่งแม่นยำกว่า
             return match[1] || match[0];
         }
     }
