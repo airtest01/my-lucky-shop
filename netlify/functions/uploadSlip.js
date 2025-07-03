@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
+const { getStorage } = require('firebase-admin/storage'); //
 const vision = require('@google-cloud/vision');
 const crypto = require('crypto');
 
@@ -30,7 +31,7 @@ const visionClient = new vision.ImageAnnotatorClient({
 });
 
 const db = getFirestore();
-
+const bucket = getStorage().bucket("gs://my-lucky-shop.appspot.com")
 // --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาข้อมูล ---
 
 function findAmountInText(text) {
@@ -109,25 +110,48 @@ exports.handler = async (event) => {
     if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
        throw new Error(`ยอดเงินในสลิปไม่ถูกต้อง (ที่อ่านได้: ${amountOnSlip || 'ไม่พบ'}) ยอดที่ต้องชำระคือ ${totalPrice} บาท`);
     }
+// --- ส่วนที่ 4.5: อัปโหลดสลิปไปที่ Storage และรับ URL ---
+const filePath = `slips/${sellerId}/${slipHash}.jpg`;
+const file = bucket.file(filePath);
 
-    // 5. บันทึกข้อมูลทั้งหมด
-    const batch = db.batch();
-    const updateTimestamp = new Date();
+await file.save(imageBuffer, {
+  metadata: {
+    contentType: 'image/jpeg',
+  },
+});
 
-    reservedNumbers.forEach(number => {
-      const numberRef = db.collection('sellers').doc(sellerId).collection('numbers').doc(number);
-      batch.update(numberRef, { 
-          status: 'needs_review', 
-          paidAt: updateTimestamp 
-        });
+// ทำให้ไฟล์เป็นสาธารณะเพื่อให้ทุกคนดูได้ผ่าน URL
+await file.makePublic(); 
+
+// รับ URL ของไฟล์ที่อัปโหลดแล้ว
+const slipDownloadURL = file.publicUrl();
+
+// --------------------------------------------------------
+
+// 5. บันทึกข้อมูลทั้งหมด
+const batch = db.batch();
+const updateTimestamp = new Date();
+
+reservedNumbers.forEach(number => {
+    const numberRef = db.collection('sellers').doc(sellerId).collection('numbers').doc(number);
+    
+    // แทนที่ด้วยโค้ดเวอร์ชันสมบูรณ์นี้
+    batch.update(numberRef, { 
+        status: 'needs_review', 
+        paidAt: updateTimestamp,
+        customerName: customerData.name,
+        customerPhone: customerData.phone,
+        slipUrl: slipDownloadURL // <-- เพิ่มข้อมูลที่ขาดไป
     });
-    
-    batch.set(slipRef, { usedAt: updateTimestamp, customerName: customerData.name, transactionId: transactionId });
-    batch.set(txRef, { usedAt: updateTimestamp, customerName: customerData.name });
-    
-    await batch.commit();
+});
 
-    // 6. ส่ง LINE แจ้งเตือน
+batch.set(slipRef, { usedAt: updateTimestamp, customerName: customerData.name, transactionId: transactionId });
+batch.set(txRef, { usedAt: updateTimestamp, customerName: customerData.name });
+
+await batch.commit();
+
+// 6. ส่ง LINE แจ้งเตือน
+// ... (ส่วนนี้ถูกต้องแล้ว ไม่ต้องแก้ไข) ...
     try {
         const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
@@ -163,4 +187,3 @@ exports.handler = async (event) => {
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
     };
   }
-};
