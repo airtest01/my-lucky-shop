@@ -29,10 +29,10 @@ const visionClient = new vision.ImageAnnotatorClient({
 });
 
 const db = getFirestore();
-// แก้ไขการเชื่อมต่อ Bucket เป็นครั้งสุดท้าย โดยระบุชื่อให้ชัดเจน
-const bucket = getStorage().bucket("my-lucky-shop.appspot.com");
+// แก้ไขชื่อ Bucket ให้ถูกต้องตามจริงจากหน้า Console
+const bucket = getStorage().bucket("my-lucky-shop.firebasestorage.app");
 
-// --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาข้อมูล (เวอร์ชันปรับปรุง) ---
+// --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาข้อมูล ---
 
 /**
  * ฟังก์ชันค้นหายอดเงินที่ยืดหยุ่นมากขึ้น
