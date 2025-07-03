@@ -182,8 +182,14 @@ await batch.commit();
   } catch (error) {
     console.error('--- DETAILED ERROR in uploadSlip function: ---');
     console.error(error);
+    //... (โค้ดส่วนอื่น ๆ) ...
     return {
       statusCode: 500,
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
     };
   }
+
+} // <- ปิด catch (error)
+
+// เพิ่มบรรทัดนี้เข้าไป
+} // <- ปิด exports.handler
