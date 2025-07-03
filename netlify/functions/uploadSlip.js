@@ -44,17 +44,27 @@ function findAmountInText(text) {
 }
 
 function findTransactionId(text) {
-    const patterns = [
-        /(?:รหัสอ้างอิง|Ref\.|Ref No\.)[:\s\n]+([\w\d]{10,})/i,
-        /(\d{14,})/
-    ];
-    for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-            return match[1].trim();
-        }
-    }
-    return null;
+  // วิธีที่ 1: ตรวจหารูปแบบสลิป K+ (รหัสยาวๆ ที่ไม่มีคำนำหน้า)
+  const cleanedText = text.replace(/[\s\n]/g, '');
+  const kplusRegex = /[A-Z0-9]{20,}/g;
+  const kplusMatches = cleanedText.match(kplusRegex);
+  if (kplusMatches && kplusMatches.length > 0) {
+      return kplusMatches[0];
+  }
+
+  // วิธีที่ 2: ตรวจหารูปแบบทั่วไป (มีคำว่า Ref หรือ รหัสอ้างอิง นำหน้า)
+  const genericPatterns = [
+      /(?:รหัสอ้างอิง|Ref\.|Ref No\.)[:\s\n]+([\w\d]{10,})/i,
+      /(\d{14,})/
+  ];
+  for (const pattern of genericPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+          return match[1].trim();
+      }
+  }
+  
+  return null; // ถ้าไม่เจอจากทุกวิธี
 }
 
 // --- โค้ดหลักของฟังก์ชัน ---
