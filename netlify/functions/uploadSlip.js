@@ -4,16 +4,22 @@ const { getStorage } = require('firebase-admin/storage');
 const vision = require('@google-cloud/vision');
 const crypto = require('crypto');
 
-// --- ส่วนที่ 1: การเชื่อมต่อ (เหมือนเดิม) ---
+// --- ส่วนที่ 1: การเชื่อมต่อและการยืนยันตัวตน ---
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+
 if (!serviceAccountBase64) {
     throw new Error("FATAL ERROR: FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set.");
 }
+
 const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
 const serviceAccount = JSON.parse(serviceAccountJson);
+
 if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
 }
+
 const visionClient = new vision.ImageAnnotatorClient({
   projectId: serviceAccount.project_id,
   credentials: {
@@ -21,8 +27,10 @@ const visionClient = new vision.ImageAnnotatorClient({
     private_key: serviceAccount.private_key.replace(/\\n/g, '\n')
   }
 });
+
 const db = getFirestore();
-const bucket = getStorage().bucket("gs://my-lucky-shop.appspot.com");
+// แก้ไขการเชื่อมต่อ Bucket ให้ถูกต้องและดีที่สุด
+const bucket = getStorage().bucket();
 
 // --- ส่วนที่ 2: ฟังก์ชันเสริมสำหรับค้นหาข้อมูล (เวอร์ชันปรับปรุง) ---
 
@@ -32,7 +40,7 @@ const bucket = getStorage().bucket("gs://my-lucky-shop.appspot.com");
  * @returns {number|null} ยอดเงินที่หาได้ หรือ null ถ้าหาไม่เจอ
  */
 function findAmount(text) {
-    const amountRegex = /(\d{1,3}(?:,\d{3})*|d+)\.\d{2}/g;
+    const amountRegex = /(\d{1,3}(?:,\d{3})*|\d+)\.\d{2}/g;
     
     // Pattern 1: มองหา Keywords แล้วตามด้วยตัวเลข (รองรับ K+, SCB, BBL)
     const keywordPatterns = [
@@ -51,16 +59,13 @@ function findAmount(text) {
     }
 
     // Pattern 2: (Fallback) ถ้าไม่มี Keyword, ให้หาตัวเลขเดี่ยวๆ ที่มีขนาดใหญ่และเด่นชัด (มักเป็นยอดโอน)
-    // สำหรับสลิปสมัยใหม่ที่แสดงยอดเงินเป็นตัวใหญ่ๆ
     const lines = text.split('\n');
     let potentialAmounts = [];
     for (const line of lines) {
-        // หาบรรทัดที่มีแค่ตัวเลขยอดเงินอย่างเดียว
-        if (/^(\d{1,3}(?:,\d{3})*|d+)\.\d{2}$/.test(line.trim())) {
+        if (/^(\d{1,3}(?:,\d{3})*|\d+)\.\d{2}$/.test(line.trim())) {
              potentialAmounts.push(parseFloat(line.trim().replace(/,/g, '')));
         }
     }
-    // คืนค่าตัวเลขที่มากที่สุดที่หาได้ (มักเป็นยอดโอน ไม่ใช่ค่าธรรมเนียม)
     if (potentialAmounts.length > 0) {
         return Math.max(...potentialAmounts);
     }
@@ -75,26 +80,27 @@ function findAmount(text) {
  * @returns {string|null} รหัสอ้างอิงที่หาได้ หรือ null ถ้าหาไม่เจอ
  */
 function findTransactionId(text) {
-    const cleanedText = text.replace(/[\s\n-]/g, ''); // ลบช่องว่าง, ขึ้นบรรทัดใหม่, และขีดกลาง ออกไปก่อน
+    // ลบช่องว่าง, ขึ้นบรรทัดใหม่, และขีดกลาง ออกไปก่อนเพื่อการจับคู่ที่ง่ายขึ้น
+    const cleanedText = text.replace(/[\s\n-]/g, '');
     
-    // ชุดของ Patterns สำหรับค้นหา Transaction ID
     const patterns = [
-        /[A-Z0-9|]{20,}/, // Pattern 1: สำหรับ GSB, KBank (ตัวอักษรตัวเลขยาวๆ)
-        /(?<=รหัสอ้างอิง|เลขที่รายการ|RefNo|Ref)\s*:\s*([A-Z0-9|]+)/i, // Pattern 2: หาจาก Keyword ก่อน
+        /(?<=รหัสอ้างอิง|เลขที่รายการ|RefNo|Ref)\s*:?\s*([A-Z0-9|]+)/i, // Pattern 1: หาจาก Keyword ก่อน (ดีที่สุด)
+        /[A-Z0-9|]{20,}/, // Pattern 2: สำหรับ GSB, KBank (ตัวอักษรตัวเลขยาวๆ)
         /\d{15,}/ // Pattern 3: (Fallback) หาตัวเลขล้วนยาวๆ
     ];
 
     for (const pattern of patterns) {
         const match = cleanedText.match(pattern);
         if (match && match[0]) {
-            return match[0];
+            // ถ้าเป็น Pattern 1 จะมี Group ที่ 1 ซึ่งแม่นยำกว่า
+            return match[1] || match[0];
         }
     }
     
     return null;
 }
 
-// --- ส่วนที่ 3: โค้ดหลักของฟังก์ชัน (ปรับปรุงให้เรียกใช้ฟังก์ชันใหม่) ---
+// --- ส่วนที่ 3: โค้ดหลักของฟังก์ชัน (Main Handler) ---
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -102,23 +108,21 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { imageBase64, reservedNumbers, userId, customerData, totalPrice, sellerId } = body;
+    const { imageBase64, reservedNumbers, customerData, totalPrice, sellerId } = body;
 
-    if (!imageBase64 || !reservedNumbers || !customerData || !sellerId) {
+    if (!imageBase64 || !reservedNumbers || !customerData || !totalPrice || !sellerId) {
       throw new Error('ข้อมูลที่ส่งมาไม่สมบูรณ์');
     }
 
     const imageBuffer = Buffer.from(imageBase64.split(',')[1], 'base64');
     const slipHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
     
-    // 1. ตรวจสอบ Hash (เหมือนเดิม)
     const slipRef = db.collection('sellers').doc(sellerId).collection('usedSlips').doc(slipHash);
     const slipDoc = await slipRef.get();
     if (slipDoc.exists) {
       throw new Error('สลิปนี้ถูกใช้งานไปแล้ว (ตรวจสอบจากลายนิ้วมือรูปภาพ)');
     }
 
-    // 2. อ่านข้อความจากสลิป (เหมือนเดิม)
     const [result] = await visionClient.textDetection({ image: { content: imageBuffer } });
     const detectedText = result.fullTextAnnotation?.text || '';
     console.log("--- OCR Detected Text ---:", detectedText);
@@ -126,7 +130,6 @@ exports.handler = async (event) => {
         throw new Error('ไม่สามารถอ่านข้อมูลจากรูปภาพได้ อาจไม่ใช่สลิปการโอนเงิน');
     }
     
-    // 3. ตรวจสอบ Transaction ID ซ้ำ (เรียกใช้ฟังก์ชันใหม่)
     const transactionId = findTransactionId(detectedText);
     if (!transactionId) {
         throw new Error('ไม่สามารถหารหัสอ้างอิง (เลขที่รายการ) ในสลิปได้');
@@ -137,13 +140,11 @@ exports.handler = async (event) => {
         throw new Error('สลิปนี้มีรหัสอ้างอิงที่ถูกใช้งานไปแล้ว');
     }
 
-    // 4. ตรวจสอบยอดเงิน (เรียกใช้ฟังก์ชันใหม่)
     const amountOnSlip = findAmount(detectedText);
     if (amountOnSlip === null || Math.abs(amountOnSlip - totalPrice) > 0.01) {
        throw new Error(`ยอดเงินในสลิปไม่ถูกต้อง (ที่อ่านได้: ${amountOnSlip || 'ไม่พบ'}) ยอดที่ต้องชำระคือ ${totalPrice} บาท`);
     }
 
-    // 5. อัปโหลดและบันทึกข้อมูล (เหมือนเดิม)
     const filePath = `slips/${sellerId}/${slipHash}.jpg`;
     const file = bucket.file(filePath);
     await file.save(imageBuffer, { metadata: { contentType: 'image/jpeg' } });
@@ -166,21 +167,30 @@ exports.handler = async (event) => {
     batch.set(txRef, { usedAt: updateTimestamp, customerName: customerData.name });
     await batch.commit();
 
-    // 6. ส่ง LINE แจ้งเตือน (เหมือนเดิม)
     try {
         const lineChannelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         const lineAdminUserId = process.env.LINE_ADMIN_USER_ID;
         if (lineChannelAccessToken && lineAdminUserId) {
-            //... (โค้ดส่ง LINE เหมือนเดิมทุกประการ)
+            const messageBody = {
+                to: lineAdminUserId,
+                messages: [{
+                    type: 'text',
+                    text: `✅ มีรายการใหม่รอตรวจสอบ!\n\nเลขที่จอง: ${reservedNumbers.join(', ')}\nยอดเงิน: ${totalPrice} บาท\nลูกค้า: ${customerData.name}`
+                }]
+            };
+            await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineChannelAccessToken}` },
+                body: JSON.stringify(messageBody)
+            });
         }
     } catch (lineError) {
         console.error("Failed to send LINE notification:", lineError);
     }
 
-    // 7. ส่งคำตอบว่าสำเร็จ (เหมือนเดิม)
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ', status: 'needs_review' })
+      body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ' })
     };
 
   } catch (error) {
@@ -190,4 +200,4 @@ exports.handler = async (event) => {
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
     };
   }
-}
+};
