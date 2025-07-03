@@ -469,19 +469,45 @@
         }, 1000);
     }
 
-    async function cancelReservation(isTimeout = false) {
-        clearInterval(reservationTimer);
-        if (isTimeout) alert("หมดเวลาในการชำระเงิน ระบบได้ยกเลิกการจองของคุณแล้ว");
-        // For simplicity, we let the backend cleanup function handle deletion.
-        // A more robust solution would be a `cancelReservation` function on the backend.
-        paymentModal.classList.add('hidden');
-        paymentModal.classList.remove('flex');
-        infoModal.classList.add('hidden');
-        infoModal.classList.remove('flex');
-        reservedNumbers = [];
-        selectedNumbers = [];
-        updateSelectionSummary();
+// --- ฟังก์ชัน cancelReservation (ฉบับอัปเกรดล่าสุด) ---
+async function cancelReservation(isTimeout = false) {
+    clearInterval(reservationTimer);
+    if (isTimeout) {
+        alert("หมดเวลาในการชำระเงิน ระบบได้ยกเลิกการจองของคุณแล้ว");
     }
+
+    // --- ส่วนที่แก้ไขใหม่: เรียกใช้ฟังก์ชันหลังบ้าน ---
+    if (reservedNumbers.length > 0 && sellerId) {
+        try {
+            const payload = {
+                sellerId: sellerId,
+                numbersToCancel: reservedNumbers
+            };
+
+            // ส่งคำขอยกเลิกไปที่ฟังก์ชันหลังบ้าน
+            await fetch('/.netlify/functions/cancelReservation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log("Cancellation request sent for numbers:", reservedNumbers.join(', '));
+        } catch (error) {
+            // ถึงแม้จะส่งไม่สำเร็จ ก็ยังต้องรีเซ็ตหน้าจอต่อไป
+            console.error("Error sending cancellation request:", error);
+        }
+    }
+    // --- จบส่วนที่แก้ไขใหม่ ---
+
+    // รีเซ็ตหน้าจอ (เหมือนเดิม)
+    paymentModal.classList.add('hidden');
+    paymentModal.classList.remove('flex');
+    infoModal.classList.add('hidden');
+    infoModal.classList.remove('flex');
+
+    reservedNumbers = [];
+    selectedNumbers = [];
+    updateSelectionSummary();
+}
 
     async function handlePaymentConfirmation() {
         if (reservedNumbers.length === 0 || !sellerId) return;
