@@ -284,37 +284,7 @@ function listenForBookings(uid) {
                 <td class="px-6 py-4">${slipCell}</td>
             `;
 
-            bookingsTableBody.appendChild(row);
-        });
-    });
-}
-
-//... โค้ดส่วนบนของฟังก์ชันเหมือนเดิม ...
-docs.forEach(doc => {
-    const booking = doc.data();
-    const row = document.createElement('tr');
-    const timestamp = booking.paidAt?.toDate();
-    const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
-
-    let actionButtons = '';
-    if (booking.status === 'needs_review') {
-        actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
-    }
-    actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
-
-    // สร้างลิงก์สำหรับดูสลิป
-    const slipCell = booking.slipUrl ? `<a href="${booking.slipUrl}" target="_blank" class="text-blue-600 hover:underline">ดูสลิป</a>` : '-';
-
-    let statusClass = "text-gray-500";
-    if (booking.status === 'needs_review') statusClass = 'text-blue-500';
-    if (booking.status === 'sold') statusClass = 'text-green-600';
-    if (booking.status === 'pending') statusClass = 'text-yellow-500';
-
-    // --- แก้ไขบรรทัดนี้: เพิ่ม ${slipCell} เข้าไปในคอลัมน์สุดท้าย ---
-    row.innerHTML = `<td class="px-4 py-4 font-bold">${doc.id}</td><td class="px-4 py-4 font-semibold ${statusClass}">${booking.status}</td><td class="px-4 py-4">${booking.customerName || '-'}</td><td class="px-4 py-4">${booking.customerPhone || '-'}</td><td class="px-4 py-4">${formattedTime}</td><td class="px-4 py-4">${actionButtons || '-'}</td><td class="px-4 py-4">${slipCell}</td>`;
-
-    bookingsTableBody.appendChild(row);
-});
+ 
 
         async function handleConfirmPayment(numberId) {
             if (!currentUserId) return;
