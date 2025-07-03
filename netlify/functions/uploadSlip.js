@@ -35,7 +35,7 @@ const db = getFirestore();
 
 function findAmountInText(text) {
   const lines = text.split('\n');
-  const keyword = 'จํานวน';
+  const keyword = 'จำนวน';
   const keywordIndex = lines.findIndex(line => line.includes(keyword));
   if (keywordIndex === -1 || keywordIndex + 1 >= lines.length) {
     return null;
