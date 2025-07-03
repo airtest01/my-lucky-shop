@@ -237,54 +237,54 @@
             }
         }
 
- // --- ฟังก์ชัน listenForBookings (ฉบับแก้ไข) ---
-function listenForBookings(uid) {
-    if (unsubscribeBookings) unsubscribeBookings();
+        function listenForBookings(uid) {
+            if (unsubscribeBookings) unsubscribeBookings();
 
-    const q = query(collection(db, `sellers/${uid}/numbers`), orderBy("paidAt", "desc"));
+            const q = query(collection(db, `sellers/${uid}/numbers`), orderBy("paidAt", "desc"));
 
-    unsubscribeBookings = onSnapshot(q, (snapshot) => {
-        const docs = snapshot.docs.filter(doc => currentFilter === 'all' || doc.data().status === currentFilter);
-        bookingsTableBody.innerHTML = '';
+            unsubscribeBookings = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs.filter(doc => currentFilter === 'all' || doc.data().status === currentFilter);
+                bookingsTableBody.innerHTML = '';
 
-        if (docs.length === 0) {
-            bookingsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4">ไม่พบข้อมูล</td></tr>`;
-            return;
+                if (docs.length === 0) {
+                    bookingsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4">ไม่พบข้อมูล</td></tr>`;
+                    return;
+                }
+
+                docs.forEach(doc => {
+                    const booking = doc.data();
+                    const row = document.createElement('tr');
+                    const timestamp = booking.paidAt?.toDate();
+                    const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
+
+                    let actionButtons = '';
+                    if (booking.status === 'needs_review') {
+                        actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
+                    }
+                    if (booking.status === 'needs_review' || booking.status === 'sold') {
+                        actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
+                    }
+                    
+                    const slipCell = booking.slipUrl ? `<a href="${booking.slipUrl}" target="_blank" class="text-blue-600 hover:underline">ดูสลิป</a>` : '-';
+
+                    let statusClass = "text-gray-500";
+                    if(booking.status === 'needs_review') statusClass = 'text-blue-500';
+                    if(booking.status === 'sold') statusClass = 'text-green-600';
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 font-bold">${doc.id}</td>
+                        <td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td>
+                        <td class="px-6 py-4">${booking.customerName || '-'}</td>
+                        <td class="px-6 py-4">${booking.customerPhone || '-'}</td>
+                        <td class="px-6 py-4">${formattedTime}</td>
+                        <td class="px-6 py-4">${actionButtons || '-'}</td>
+                        <td class="px-6 py-4">${slipCell}</td>
+                    `;
+
+                    bookingsTableBody.appendChild(row);
+                });
+            });
         }
-
-        docs.forEach(doc => {
-            const booking = doc.data();
-            const row = document.createElement('tr');
-            const timestamp = booking.paidAt?.toDate();
-            const formattedTime = timestamp ? timestamp.toLocaleString('th-TH') : '-';
-
-            let actionButtons = '';
-            if (booking.status === 'needs_review') {
-                actionButtons += `<button class="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded confirm-btn" data-id="${doc.id}">ยืนยัน</button> `;
-            }
-            if (booking.status === 'needs_review' || booking.status === 'sold') {
-                actionButtons += `<button class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded cancel-btn" data-id="${doc.id}">ยกเลิก</button>`;
-            }
-
-            // สร้างลิงก์สำหรับดูสลิป
-            const slipCell = booking.slipUrl ? `<a href="${booking.slipUrl}" target="_blank" class="text-blue-600 hover:underline">ดูสลิป</a>` : '-';
-
-            let statusClass = "text-gray-500";
-            if(booking.status === 'needs_review') statusClass = 'text-blue-500';
-            if(booking.status === 'sold') statusClass = 'text-green-600';
-
-            // แก้ไขบรรทัดนี้ให้ถูกต้องและมี 7 คอลัมน์
-            row.innerHTML = `
-                <td class="px-6 py-4 font-bold">${doc.id}</td>
-                <td class="px-6 py-4 font-semibold ${statusClass}">${booking.status}</td>
-                <td class="px-6 py-4">${booking.customerName || '-'}</td>
-                <td class="px-6 py-4">${booking.customerPhone || '-'}</td>
-                <td class="px-6 py-4">${formattedTime}</td>
-                <td class="px-6 py-4">${actionButtons || '-'}</td>
-                <td class="px-6 py-4">${slipCell}</td>
-            `;
-
- 
 
         async function handleConfirmPayment(numberId) {
             if (!currentUserId) return;
