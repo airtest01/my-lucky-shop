@@ -179,17 +179,14 @@ await batch.commit();
       body: JSON.stringify({ success: true, message: 'อัปโหลดสลิปสำเร็จ กรุณารอการตรวจสอบ', status: 'needs_review' })
     };
 
+  // ... โค้ดส่วนอื่นๆ ...
   } catch (error) {
     console.error('--- DETAILED ERROR in uploadSlip function: ---');
     console.error(error);
-    //... (โค้ดส่วนอื่น ๆ) ...
     return {
       statusCode: 500,
       body: JSON.stringify({ success: false, message: error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุในเซิร์ฟเวอร์' })
     };
-  }
+  } // <-- ปีกกานี้สำหรับปิด try...catch
 
-} // <- ปิด catch (error)
-
-// เพิ่มบรรทัดนี้เข้าไป
-} // <- ปิด exports.handler
+} // <-- ปีกกานี้สำหรับปิด exports.handler
